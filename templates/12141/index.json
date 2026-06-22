@@ -1,0 +1,16 @@
+{
+  "categoryId": "12141",
+  "productName": "Ornament",
+  "description": "Personalized 2D Acrylic Ornament\n✨ Bring your memories to life with a sleek, modern ornament that pops with color and razor-sharp detail. Perfect for the tree or year-round décor—and a thoughtful gift for Christmas, Valentine's Day, birthdays, and more.\n\nWhy You'll Love It:\n📸 Personalized, edge-to-edge print: Captures even the finest details with exceptional accuracy.\n💡 Vivid & long-lasting: UV printing delivers bright, fade-resistant artwork that resists everyday wear.\n💎 Premium build: 3 mm-thick acrylic—strong, durable, and beautifully glossy.\n🪶 Lightweight: Easy to hang without weighing down branches.\n🎁 Gift-ready: Comes with a hanging string and an elegant gift box.\n\nSpecs:\n• Material: 3 mm acrylic sheet\n• Technology: High-definition UV printing\n• Size: 3.5\"–4.5\" (varies by design/shape)\n• Included: 1 ornament + hanging string + gift box",
+  "variants": [
+    { "option1": "pack 1", "option2": "3.5 x 3.5 inch", "price": 66.66 },
+    { "option1": "pack 3", "option2": "3.5 x 3.5 inch", "price": 166.66 },
+    { "option1": "pack 5", "option2": "3.5 x 3.5 inch", "price": 277.77 },
+    { "option1": "pack 10", "option2": "3.5 x 3.5 inch", "price": 477.77 },
+    { "option1": "pack 1", "option2": "4.5 x 4.5 inch", "price": 77.77 },
+    { "option1": "pack 3", "option2": "4.5 x 4.5 inch", "price": 183.33 },
+    { "option1": "pack 5", "option2": "4.5 x 4.5 inch", "price": 294.44 },
+    { "option1": "pack 10", "option2": "4.5 x 4.5 inch", "price": 522.22 }
+  ],
+  "availableConfigs": ["NORMAL", "CUSTOM"]
+}

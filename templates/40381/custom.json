@@ -1,0 +1,36 @@
+{
+  "fixed_columns": {
+    "E": "40381",
+    "F": "Home & Kitchen / Seasonal Décor / Decorative Sign & Plague",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "DA": "{option1}",
+    "CY": "Size",
+    "DX": "{price}",
+    "DZ": "232.95",
+    "DW": "50",
+    "EA": "0.5",
+    "EB": "18",
+    "EC": "18",
+    "ED": "5",
+    "EE": "Single set",
+    "EF": "No",
+    "EG": "1",
+    "EH": "pack",
+    "EP": "Shipping Booktracker",
+    "EQ": "7 Days",
+    "ET": "United Kingdom"
+  },
+  "images": {
+    "start_col": "DM",
+    "end_col": "DV"
+  },
+  "start_row": 5
+}

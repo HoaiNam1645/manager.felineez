@@ -1,0 +1,73 @@
+{
+  "categoryId": "10585",
+  "productName": "Mugs",
+  "description": "Start your day with a warm cup of coffee or tea in this beautifully personalized ceramic mug. Featuring a delicate floral design and your custom name, this mug adds a touch of charm and personality to every sip.\n\nIt's a thoughtful gift for friends, family, coworkers, or anyone who loves a cozy morning moment. Made from high-quality ceramic, this mug is durable, microwave safe, and dishwasher friendly—perfect for everyday use.\n\nThe smooth surface and sturdy handle make it comfortable to hold, while the vibrant print stays bright even after many washes.\n\nAvailable in two sizes:\n• 11 oz – perfect for your daily coffee or tea.\n• 15 oz – ideal for those who like a bigger pour.\n\nWhether you're looking for a special gift for birthdays, holidays, anniversaries, or Christmas, this personalized floral mug is a timeless and heartwarming choice.",
+  "variants": [
+    {
+      "option1": "White",
+      "option2": "11OZ",
+      "price": 105
+    },
+    {
+      "option1": "Black",
+      "option2": "11OZ",
+      "price": 105
+    },
+    {
+      "option1": "Pink",
+      "option2": "11OZ",
+      "price": 105
+    },
+    {
+      "option1": "Red",
+      "option2": "11OZ",
+      "price": 105
+    },
+    {
+      "option1": "Light Blue",
+      "option2": "11OZ",
+      "price": 105
+    },
+    {
+      "option1": "Yellow",
+      "option2": "11OZ",
+      "price": 105
+    },
+    {
+      "option1": "White",
+      "option2": "15OZ",
+      "price": 110
+    },
+    {
+      "option1": "Black",
+      "option2": "15OZ",
+      "price": 110
+    },
+    {
+      "option1": "Pink",
+      "option2": "15OZ",
+      "price": 110
+    },
+    {
+      "option1": "Red",
+      "option2": "15OZ",
+      "price": 110
+    },
+    {
+      "option1": "Light Blue",
+      "option2": "15OZ",
+      "price": 110
+    },
+    {
+      "option1": "Yellow",
+      "option2": "15OZ",
+      "price": 110
+    }
+  ],
+  "availableConfigs": [
+    "NORMAL",
+    "CUSTOM",
+    "PACK",
+    "PACK_CUSTOM"
+  ]
+}

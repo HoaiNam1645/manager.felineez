@@ -1,0 +1,35 @@
+{
+  "fixed_columns": {
+    "E": "10585",
+    "F": "Home & Kitchen / Kitchen & Dining / Dining & Entertaining / Glassware & Drinkware / Cups, Mugs, & Saucers / Coffee Cups & Mugs",
+    "G": "Normal product",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "BY": "Ceramic",
+    "CU": "{option1}",
+    "CV": "{option2}",
+    "CT": "Color × Size",
+    "DS": "{price}",
+    "DR": "50",
+    "DV": "0.5",
+    "DW": "18",
+    "DX": "18",
+    "DY": "5",
+    "DZ": "Single set",
+    "EA": "No",
+    "EB": "1",
+    "EC": "pack",
+    "EK": "Mugs",
+    "FK": "7 Days",
+    "EM": "Imported",
+    "EO": "United States",
+    "GP": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DH",
+    "end_col": "DQ"
+  },
+  "start_row": 5
+}

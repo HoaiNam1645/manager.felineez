@@ -1,0 +1,16 @@
+{
+  "fixed_columns": {
+    "E": "9519",
+    "F": "Industrial & Scientific / Food Service Equipment & Supplies / Tabletop & Serveware / Serveware & Accessories / Egg Cups",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text"
+  },
+  "images": {
+    "start_col": "DL",
+    "end_col": "DU"
+  },
+  "start_row": 5
+}

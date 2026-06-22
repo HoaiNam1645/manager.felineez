@@ -1,0 +1,11 @@
+{
+  "categoryId": "17332",
+  "productName": "Wrapping Paper",
+  "description": "Party decor for gatherings and celebrations\n🎁 Gift Wrapping Paper That Makes Every Present Pop!\nWrap your gifts in style with our premium gift wrapping paper—designed to turn every present into a showstopper. Whether it's for birthdays, holidays, or special surprises, our paper adds a thoughtful, polished touch to any occasion.\n\n✨ Why You'll Love It:\n• Vibrant, Fade-Resistant Prints – Eye-catching designs that stay bold and beautiful\n• Thick & Durable – No tearing, creasing, or see-through mishaps\n• Easy to Cut & Fold – Smooth wrapping experience for all skill levels\n\n📏 Available Sizes:\n• 30\"x36\" (3ft)\n• 30x72\" (6ft)\n• 30\"x180\" (15ft)",
+  "variants": [
+    { "option1": "30 x 60 inch", "price": 71.50 },
+    { "option1": "30 x 72 inch", "price": 82.30 },
+    { "option1": "30 x 180 inch", "price": 121.30 }
+  ],
+  "availableConfigs": ["NORMAL"]
+}

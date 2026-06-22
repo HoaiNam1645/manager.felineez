@@ -1,0 +1,40 @@
+{
+  "fixed_columns": {
+    "E": "12042",
+    "F": "Home & Kitchen / Home Décor Products / Decorative Pillows / Throw Pillows",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "FG": "Use Without Electricity",
+    "FQ": "{option1}",
+    "FO": "Size",
+    "GC": "Upload size chart image",
+    "GD": "https://wecatmedia.space/20ksold-team/20260124-105622.jpg",
+    "GV": "{price}",
+    "GU": "50",
+    "GY": "0.5",
+    "GZ": "18",
+    "HA": "18",
+    "HB": "5",
+    "HC": "Single set",
+    "HD": "No",
+    "HE": "1",
+    "HF": "pack",
+    "HN": "Shipping pillow",
+    "HO": "7 Days",
+    "HP": "Imported",
+    "HR": "United States",
+    "JS": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "GJ",
+    "end_col": "GS"
+  },
+  "start_row": 5
+}

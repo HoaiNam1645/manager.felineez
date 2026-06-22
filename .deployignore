@@ -1,0 +1,12 @@
+node_modules/
+.git/
+.vercel/
+.vscode/
+.idea/
+.DS_Store
+*.log
+.cache/
+.next/
+src/generated/
+.env.local
+.env*.local

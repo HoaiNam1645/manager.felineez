@@ -1,0 +1,13 @@
+{
+  "categoryId": "11666",
+  "productName": "Banners",
+  "description": "🌼 KEY FEATURES 🖼️ Custom Wall Tapestry\nMade from 100% high-quality polyester fabric with one-sided printing, this tapestry combines lightweight durability with a smooth texture—perfect for any room or occasion.\n🌸 Soft & Durable Polyester Fabric – Crafted from premium polyester fleece, the fabric feels soft yet sturdy, offering wrinkle resistance and lasting color vibrancy.\n🎨 Vibrant Print Options – Personalize your tapestry with your own design or choose from stunning patterns!\n🏖️ Multi-Purpose Use – Perfect as a wall hanging, but also great as a beach towel, picnic mat, tablecloth, or outdoor decoration.\n🧼 Easy to Care For – Hand wash or machine wash on a gentle cycle. Iron at a low temperature if needed. ❌ Do not bleach.",
+  "variants": [
+    { "option1": "30 x 40 inch", "price": 131.99 },
+    { "option1": "40 x 60 inch", "price": 146.99 },
+    { "option1": "51 x 60 inch", "price": 149.99 },
+    { "option1": "60 x 80 inch", "price": 169.99 },
+    { "option1": "60 x 90 inch", "price": 191.11 }
+  ],
+  "availableConfigs": ["NORMAL"]
+}

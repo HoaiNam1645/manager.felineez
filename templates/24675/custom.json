@@ -1,0 +1,34 @@
+{
+  "fixed_columns": {
+    "E": "24675",
+    "F": "Custom product",
+    "G": "Combined techniques",
+    "H": "Organic material (e.g., acrylic/resin) customization technique",
+    "I": "Laser cutting - image",
+    "J": "Laser cutting - text",
+    "K": "{product_name}",
+    "S": "{product_description}",
+    "M": "{sku}",
+    "N": "Add",
+    "V": "{variant_image}",
+    "CB": "Use Without Electricity",
+    "DG": "{option1}",
+    "DP": "{option2}",
+    "DE": "Quantity × Size",
+    "EE": "{price}",
+    "ED": "200",
+    "EH": "1",
+    "EI": "18",
+    "EJ": "18",
+    "EK": "5",
+    "EW": "Shipping Flag",
+    "EX": "7 Days",
+    "FA": "United States",
+    "HB": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DS",
+    "end_col": "EB"
+  },
+  "start_row": 5
+}

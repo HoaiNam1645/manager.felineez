@@ -1,0 +1,38 @@
+{
+  "start_row": 5,
+  "fixed_columns": {
+    "E": "12217",
+    "F": "Home & Kitchen / Home Décor Products / Tapestries",
+    "G": "Custom product",
+    "H": "Single technique",
+    "I": "Leather/fabric customization technique",
+    "J": "Heat transfer printing - image",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "U": "🎄 Festive & Meaningful Gift: Perfect for Christmas, Valentine's, birthdays, or any special occasion – makes every moment extra special!",
+    "CQ": "Use Without Electricity",
+    "DB": "{option1}",
+    "CZ": "Size",
+    "DZ": "{price}",
+    "DY": "50",
+    "EC": "0.5",
+    "ED": "18",
+    "EE": "18",
+    "EF": "5",
+    "EG": "Single set",
+    "EH": "No",
+    "EI": "1",
+    "EJ": "pack",
+    "ER": "Shipping",
+    "ES": "7 Days",
+    "ET": "Imported",
+    "EV": "United States",
+    "GW": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DN",
+    "end_col": "DW"
+  }
+}

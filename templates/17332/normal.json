@@ -1,0 +1,42 @@
+{
+  "fixed_columns": {
+    "E": "17332",
+    "F": "Custom product",
+    "K": "{product_name}",
+    "S": "{product_description}",
+    "G": "Combined techniques",
+    "H": "Organic material (e.g., acrylic/resin) customization technique",
+    "I": "Laser cutting - image",
+    "J": "Laser cutting - text",
+    "M": "{sku}",
+    "N": "Add",
+    "T": "🎄 Festive & Meaningful Gift: Perfect for Christmas, birthdays, or any special occasion – makes every moment extra special!",
+    "BW": "https://tiktokus.nyc3.digitaloceanspaces.com/Wrapping_Paper_Christmas_Video_Generated.mp4",
+    "DE": "https://tiktokus.nyc3.digitaloceanspaces.com/t%E1%BA%A3i%20xu%E1%BB%91ng%20(4).jpg",
+    "DD": "https://tiktokus.nyc3.digitaloceanspaces.com/t%E1%BA%A3i%20xu%E1%BB%91ng%20(1).jpg",
+    "CB": "Paper",
+    "BX": "Christmas Tree",
+    "CJ": "{option1}",
+    "CH": "Size",
+    "DH": "{price}",
+    "DG": "100",
+    "DK": "0.5",
+    "DL": "18",
+    "DM": "18",
+    "DN": "5",
+    "DO": "Single set",
+    "DP": "No",
+    "DQ": "1",
+    "DR": "pack",
+    "DZ": "Paper",
+    "EA": "7 Days",
+    "EB": "Imported",
+    "ED": "United States",
+    "GE": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "CV",
+    "end_col": "DC"
+  },
+  "start_row": 5
+}

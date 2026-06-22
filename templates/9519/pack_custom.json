@@ -1,0 +1,35 @@
+{
+  "fixed_columns": {
+    "E": "9519",
+    "F": "Industrial & Scientific / Food Service Equipment & Supplies / Tabletop & Serveware / Serveware & Accessories / Egg Cups",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "BY": "Wood",
+    "CZ": "{option1}",
+    "DI": "{option2}",
+    "CX": "Quantity × Size",
+    "DX": "{price}",
+    "DW": "200",
+    "EA": "0.5",
+    "EB": "18",
+    "EC": "18",
+    "ED": "5",
+    "EP": "EggCups",
+    "EQ": "7 Days",
+    "ER": "Imported",
+    "ET": "United States",
+    "GU": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DL",
+    "end_col": "DU"
+  },
+  "start_row": 5
+}

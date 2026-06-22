@@ -1,0 +1,16 @@
+{
+  "categoryId": "12042",
+  "productName": "Pillow",
+  "description": "Add a cozy, personalized touch to any room with this custom throw pillow. Featuring high-quality fabric and vibrant printing, this pillow is perfect for sofas, beds, or chairs.\n\n✨ Product Features:\n• Premium soft fabric for comfort\n• Vivid, long-lasting print quality\n• Hidden zipper for easy cover removal\n• Machine washable\n• Available in multiple sizes: 10\", 12\", 14\", 16\", 18\", 20\", 22\", 24\"\n\n🎁 Perfect Gift:\nGreat for birthdays, holidays, housewarming, or as a thoughtful personalized gift for family and friends.",
+  "variants": [
+    { "option1": "10inch", "price": 176 },
+    { "option1": "12inch", "price": 198 },
+    { "option1": "14inch", "price": 204 },
+    { "option1": "16inch", "price": 220 },
+    { "option1": "18inch", "price": 229 },
+    { "option1": "20inch", "price": 256 },
+    { "option1": "22inch", "price": 267 },
+    { "option1": "24inch", "price": 289 }
+  ],
+  "availableConfigs": ["CUSTOM"]
+}

@@ -1,0 +1,16 @@
+{
+  "fixed_columns": {
+    "E": "10334",
+    "F": "Home & Kitchen / Kitchen & Dining / Storage & Organization / Thermoses / Insulated Beverage Containers / Tumblers",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text"
+  },
+  "images": {
+    "start_col": "DF",
+    "end_col": "DO"
+  },
+  "start_row": 5
+}

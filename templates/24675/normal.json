@@ -1,0 +1,29 @@
+{
+  "fixed_columns": {
+    "E": "24675",
+    "F": "Normal product",
+    "K": "{product_name}",
+    "S": "{product_description}",
+    "M": "{sku}",
+    "N": "Add",
+    "V": "{variant_image}",
+    "CB": "Use Without Electricity",
+    "DG": "{option1}",
+    "DP": "{option2}",
+    "DE": "Quantity × Size",
+    "EE": "{price}",
+    "ED": "200",
+    "EH": "0.11",
+    "EI": "3.5",
+    "EJ": "3.5",
+    "EK": "0.11",
+    "EW": "Flag",
+    "FA": "United States",
+    "HB": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DS",
+    "end_col": "EB"
+  },
+  "start_row": 5
+}

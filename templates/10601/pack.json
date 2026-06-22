@@ -1,0 +1,16 @@
+{
+  "fixed_columns": {
+    "E": "10601",
+    "F": "Home & Kitchen / Kitchen & Dining / Dining & Entertaining / Glassware & Drinkware / Liqueur & Spirits Glasses / Cordial Glasses",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text"
+  },
+  "images": {
+    "start_col": "DK",
+    "end_col": "DT"
+  },
+  "start_row": 5
+}

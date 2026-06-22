@@ -1,0 +1,13 @@
+{
+  "categoryId": "29007",
+  "productName": "Bikini",
+  "description": "Bring effortless summer style to your collection with this personalized two-piece bikini swimsuit — designed for comfort, confidence, and standout beach vibes. Perfect for vacation wear, resort outfits, and trending summer gifts.\n\nPremium Material:\n• Made from a high-quality polyester–spandex blend with four-way stretch\n• Soft, breathable, and smooth on the skin for all-day comfort\n• Thick, non-see-through fabric for confident coverage\n• Quick-drying — ideal for beach days, pool parties, and travel\n\nFlattering & Adjustable Design:\n• Classic triangle bikini top + matching string-tie bottoms\n• Adjustable ties on both top and bottom — fits multiple body shapes\n• Removable padded cups for light support and natural lift\n• Durable binding trim enhances shape and long-lasting wear\n• Features vibrant all-over 2D printed designs (sublimation print, not 3D)\n\nPerfect For: Beach vacations & summer outfits, Pool parties & resort wear, Personalized gifts for women",
+  "variants": [
+    { "option1": "Multicolor", "option2": "S", "price": 194.4 },
+    { "option1": "Multicolor", "option2": "M", "price": 194.4 },
+    { "option1": "Multicolor", "option2": "L", "price": 194.4 },
+    { "option1": "Multicolor", "option2": "XL", "price": 194.4 },
+    { "option1": "Multicolor", "option2": "XXL", "price": 194.4 }
+  ],
+  "availableConfigs": ["CUSTOM"]
+}

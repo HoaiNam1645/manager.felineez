@@ -1,0 +1,38 @@
+{
+  "fixed_columns": {
+    "E": "12193",
+    "F": "Home & Kitchen / Home Décor Products / Home Décor Accents / Decorative Accessories / Decorative Signs & Plaques",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "CX": "{option1}",
+    "CI": "Use Without Electricity",
+    "CV": "Size",
+    "DV": "{price}",
+    "DU": "200",
+    "DY": "0.5",
+    "DZ": "18",
+    "EA": "18",
+    "EB": "5",
+    "EC": "Single set",
+    "ED": "No",
+    "EE": "1",
+    "EF": "pack",
+    "EN": "Shipping Block",
+    "EO": "7 Days",
+    "EP": "Imported",
+    "ER": "United States",
+    "GS": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DJ",
+    "end_col": "DS"
+  },
+  "start_row": 5
+}

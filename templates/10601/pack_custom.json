@@ -1,0 +1,39 @@
+{
+  "fixed_columns": {
+    "E": "10601",
+    "F": "Home & Kitchen / Kitchen & Dining / Dining & Entertaining / Glassware & Drinkware / Liqueur & Spirits Glasses / Cordial Glasses",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "BY": "Ceramic",
+    "CY": "{option1}",
+    "DH": "{option2}",
+    "CW": "Quantity × Size",
+    "DV": "{price}",
+    "DU": "200",
+    "DY": "0.5",
+    "DZ": "18",
+    "EA": "18",
+    "EB": "5",
+    "EC": "Single set",
+    "ED": "No",
+    "EE": "1",
+    "EF": "pack",
+    "EN": "Shipping Whisky",
+    "EO": "7 Days",
+    "EP": "Imported",
+    "ER": "United States",
+    "GS": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DK",
+    "end_col": "DT"
+  },
+  "start_row": 5
+}

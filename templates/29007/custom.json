@@ -1,0 +1,42 @@
+{
+  "fixed_columns": {
+    "E": "29007",
+    "F": "Clothing, Shoes & Jewelry / Women / Clothing / Swimsuits & Cover Ups / Bikinis / Sets",
+    "G": "Custom product",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "N": "{sku}",
+    "O": "Add",
+    "U": "🏖️ Perfect Beach Bikini Set.",
+    "V": "👙 2-Piece Design.",
+    "W": "🌿 Soft & Stretchy Fabric.",
+    "X": "🎀 Adjustable String Ties.",
+    "Y": "💗 Supportive Padded Top",
+    "CZ": "Polyester",
+    "SL": "Color × Size",
+    "SM": "2 - Regular Size",
+    "SN": "10 - Alpha",
+    "SP": "{option1}",
+    "SO": "{option2}",
+    "SQ": "Upload size chart image",
+    "SR": "https://wecatmedia.space/20ksold-team/38d32581844166f443f13f3617463e6d.jpg",
+    "ZR": "50",
+    "ZS": "{price}",
+    "ZZ": "Single set",
+    "AAA": "No",
+    "AAC": "piece",
+    "AAO": "United States",
+    "AAL": "7 Days",
+    "ACP": "No Warning Applicable",
+    "AAK": "Shipping"
+  },
+  "images": {
+    "start_col": "ZH",
+    "end_col": "ZQ"
+  },
+  "start_row": 5
+}

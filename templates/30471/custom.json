@@ -1,0 +1,42 @@
+{
+  "fixed_columns": {
+    "E": "30471",
+    "F": "Clothing, Shoes & Jewelry / Men / Clothing / Shirts / Casual Button-Down Shirts",
+    "G": "Custom product",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "N": "{sku}",
+    "O": "Add",
+    "U": "Premium Fabric: 260GSM polyester with brushed fleece—soft, cozy, moisture-wicking, and breathable.",
+    "V": "Vibrant, Durable Print: HD heat-dye application for long-lasting color that resists cracking and fading.",
+    "W": "Comfort Details: Self-fabric cuffs and waistband block drafts and maintain shape wear after wear.",
+    "X": "Easy Care & Durable: Machine washable; quick-dry fabric that holds color and shape wash after wash.",
+    "Y": "Ready for Any Holiday Plan: Relaxed unisex fit for parties, gifting, lounging, school, work, gym, and more.",
+    "BY": "Polyester",
+    "HU": "Color × Size",
+    "HV": "2 - Regular Size",
+    "HW": "10 - Alpha",
+    "HX": "{option2}",
+    "HY": "{option1}",
+    "HZ": "Upload size chart image",
+    "IA": "https://wecatmedia.space/20ksold-team/website-merchize-6055932.3446900295-1751424619373.jpeg",
+    "JA": "50",
+    "JB": "{price}",
+    "JI": "Single set",
+    "JJ": "No",
+    "JL": "piece",
+    "JX": "United States",
+    "JU": "7 Days",
+    "LY": "No Warning Applicable",
+    "JT": "Shipping"
+  },
+  "images": {
+    "start_col": "IQ",
+    "end_col": "IZ"
+  },
+  "start_row": 5
+}

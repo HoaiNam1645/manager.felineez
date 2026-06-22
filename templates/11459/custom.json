@@ -1,0 +1,39 @@
+{
+  "fixed_columns": {
+    "E": "11459",
+    "F": "Home & Kitchen / Kitchen & Dining / Food Service Equipment & Supplies / Tabletop & Serveware / Linen & Table Accessories / Table Runners",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "U": "🎄 Festive & Meaningful Gift: Perfect for Christmas, Valentine’s, birthdays, or any special occasion – makes every moment extra special!",
+    "V": "🎄 Festive & Meaningful Gift: Perfect for Christmas, Valentine’s, birthdays, or any special occasion – makes every moment extra special!",
+    "FW": "{option1}",
+    "FU": "Size",
+    "GU": "{price}",
+    "GT": "50",
+    "GX": "0.5",
+    "GY": "18",
+    "GZ": "18",
+    "HA": "5",
+    "HP": "Single set",
+    "HC": "No",
+    "HD": "1",
+    "HE": "pack",
+    "HM": "Shipping",
+    "HN": "7 Days",
+    "HO": "Imported",
+    "HQ": "United States",
+    "JR": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "GI",
+    "end_col": "GR"
+  },
+  "start_row": 5
+}

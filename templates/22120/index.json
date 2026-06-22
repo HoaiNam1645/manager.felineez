@@ -1,0 +1,12 @@
+{
+  "categoryId": "22120",
+  "productName": "Car Visor Clip",
+  "description": "Take your memories on all your roads with our Acrylic Photo Car Visor Clip. It allows you to easily display your favorite photos, family, friends, memorable moments, etc. right in your car space.\n\nMaterial:\n• Photo frame: 2 sheets of 3mm-thick acrylic with rounded corners.\n• Photo: C300 paper, 1-side printed.\n\nSize:\n• Frame size: 3.54 x 2.36 inches\n• Photo size: 3.39 x 2.13 inches\n\n4 fixed magnets at the corners allow customers to change photos easily while still ensuring stability in all situations.\nMetal Visor Clip: This metal clip can attach firmly to your car's sun visor, ensuring it stays in place, even on bumpy roads.",
+  "variants": [
+    { "option1": "Size 3.5 x 2.4", "option2": "Pack 1", "price": 113.8 },
+    { "option1": "Size 3.5 x 2.4", "option2": "Pack 2", "price": 211.11 },
+    { "option1": "Size 3.5 x 2.4", "option2": "Pack 3", "price": 305.5 },
+    { "option1": "Size 3.5 x 2.4", "option2": "Pack 4", "price": 416.6 }
+  ],
+  "availableConfigs": ["PACK", "PACK_CUSTOM"]
+}

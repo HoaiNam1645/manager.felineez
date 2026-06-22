@@ -1,0 +1,31 @@
+{
+  "fixed_columns": {
+    "E": "22120",
+    "F": "Automotive / Interior Accessories / Other (Interior Accessories)",
+    "G": "Normal product",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "BY": "Acrylic",
+    "CN": "{option1}",
+    "CE": "{option2}",
+    "CC": "Quantity × Size",
+    "DC": "{price}",
+    "DB": "50",
+    "DF": "0.5",
+    "DG": "7",
+    "DH": "7",
+    "DI": "2",
+    "DU": "Shipping Visor",
+    "DV": "7 Days",
+    "DW": "Imported",
+    "DY": "United States",
+    "FZ": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "CQ",
+    "end_col": "CZ"
+  },
+  "start_row": 5
+}

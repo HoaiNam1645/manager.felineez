@@ -1,0 +1,18 @@
+{
+  "categoryId": "11459",
+  "productName": "Table Runner",
+  "description": "Transform your space with a vibrant custom poster that adds personality and charm to any room. Whether you're decorating for a party or upgrading your everyday space, this high-quality print makes it easy to create a look you love.\n\nPrinted on premium resin-coated photo paper, each poster delivers rich colors, sharp details, and a beautiful satin finish for a professional look—no frame needed.\n\nPerfect for bedrooms, living rooms, bathrooms, kids' rooms, offices, dorms, and more.\n\n✨ Product Features:\n🖼️ Premium resin-coated photo paper for durability & vivid colors\n🎨 Satin finish for enhanced depth and clarity\n💪 Heavyweight 230 gsm (9 mil thickness)\n🌈 High color gamut & sharp image resolution\n⏳ Long-lasting: up to 95 years indoors, 5 years in sunlight\n📦 Rolled and shipped in a protective tube\n\n📏 Sizes: 8\"x12\" | 11\"x17\" | 12\"x18\" | 16\"x16\" | 16\"x24\" | 18\"x24\" | 24\"x24\" | 24\"x36\" | 30\"x30\" | 32\"x48\"\n⚠️ Frame not included",
+  "variants": [
+    { "option1": "8x12", "price": 100 },
+    { "option1": "11x17", "price": 122 },
+    { "option1": "12x18", "price": 125 },
+    { "option1": "16x16", "price": 127 },
+    { "option1": "16x24", "price": 130 },
+    { "option1": "18x24", "price": 133 },
+    { "option1": "24x24", "price": 191 },
+    { "option1": "24x36", "price": 202 },
+    { "option1": "30x30", "price": 255 },
+    { "option1": "32x48", "price": 305 }
+  ],
+  "availableConfigs": ["CUSTOM"]
+}

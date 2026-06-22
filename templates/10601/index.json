@@ -1,0 +1,11 @@
+{
+  "categoryId": "10601",
+  "productName": "Wiskey Glass",
+  "description": "Elevate every sip with our premium 11oz Whiskey Glass, designed to bring both style and personalization to your drinking experience. Using advanced UV direct printing technology, your custom design is rendered with exceptional clarity, vibrant colors, and long-lasting detail—turning each glass into a unique statement piece.\n\nMade from durable, high-quality tempered glass, this whiskey glass offers excellent resistance to everyday use while maintaining a refined, elegant look. Perfect for celebrating special moments, marking achievements, or simply unwinding in style, it's a meaningful gift or a sophisticated addition to your own collection.",
+  "variants": [
+    { "option1": "11Oz 2Side", "option2": "Pack 1", "price": 164.05 },
+    { "option1": "11Oz 2Side", "option2": "Pack 3", "price": 490.05 },
+    { "option1": "11Oz 2Side", "option2": "Pack 5", "price": 816.35 }
+  ],
+  "availableConfigs": ["PACK_CUSTOM"]
+}

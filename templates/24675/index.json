@@ -1,0 +1,14 @@
+{
+  "categoryId": "24675",
+  "productName": "Flag",
+  "description": "📏 Available Sizes:\n• 12 x 18 inches (Small) – Perfect for porches, patios, or balconies.\n• 28 x 40 inches (Large) – Ideal for gardens, lawns, or larger outdoor spaces.\n\n🧵 Material:\n• Made from 100% premium polyester fabric.\n• Double-stitched edges for added strength and durability.\n• Fade-resistant and weatherproof for long-lasting outdoor use.\n\n💝 Perfect For:\n• Christmas and holiday outdoor décor.\n• Funny political or activist-themed home decoration.\n• A unique and humorous gift for friends, neighbors, or anyone with a bold sense of humor and pride.",
+  "variants": [
+    { "option1": "12 x 18 inch", "option2": "Pack 1", "price": 127.72 },
+    { "option1": "12 x 18 inch", "option2": "Pack 3", "price": 370.16 },
+    { "option1": "12 x 18 inch", "option2": "Pack 5", "price": 620.61 },
+    { "option1": "28 x 40 inch", "option2": "Pack 1", "price": 149.94 },
+    { "option1": "28 x 40 inch", "option2": "Pack 3", "price": 430.83 },
+    { "option1": "28 x 40 inch", "option2": "Pack 5", "price": 730.72 }
+  ],
+  "availableConfigs": ["NORMAL", "CUSTOM"]
+}

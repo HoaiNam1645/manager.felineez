@@ -1,0 +1,18 @@
+{
+  "categoryId": "30152",
+  "productName": "Cap",
+  "description": "Materials: Cotton\nA personalized embroidered hat made for everyday wear, gifting, and special occasions. This custom baseball cap features your chosen text embroidered in your selected font and thread color, creating a unique and meaningful gift for men and women.\n\nPerfect for birthdays, weddings, bachelorette trips, bridesmaid gifts, couple gifts, family matching, vacations, and casual daily outfits.\n\nWhy Buyers Love It:\n• Custom text embroidery\n• Vintage washed look\n• Adjustable fit\n• Easy to style with everyday outfits\n• Great gift for him or her\n• Multiple cap colors, thread colors, and font options",
+  "variants": [
+    { "option1": "Black", "price": 183 },
+    { "option1": "White", "price": 183 },
+    { "option1": "Khaki", "price": 183 },
+    { "option1": "Navy", "price": 183 },
+    { "option1": "Olive Green", "price": 183 },
+    { "option1": "Brown Coffee", "price": 183 },
+    { "option1": "Grey", "price": 183 },
+    { "option1": "Pink", "price": 183 },
+    { "option1": "Purple", "price": 183 },
+    { "option1": "Red", "price": 183 }
+  ],
+  "availableConfigs": ["CUSTOM"]
+}

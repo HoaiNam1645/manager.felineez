@@ -1,0 +1,35 @@
+{
+  "fixed_columns": {
+    "E": "30152",
+    "F": "Clothing, Shoes & Jewelry / Novelty & More / Clothing / Novelty / Women / Accessories / Hats & Caps / Baseball Caps",
+    "G": "Custom product",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "N": "{sku}",
+    "O": "Add",
+    "U": "🎄 Festive & Meaningful Gift: Perfect for Christmas, Valentine’s, birthdays, or any special occasion – makes every moment extra special!",
+    "EQ": "Cotton",
+    "ES": "{option1}",
+    "FR": "{price}",
+    "ER": "Color",
+    "FQ": "200",
+    "FU": "0.5",
+    "FV": "18",
+    "FW": "18",
+    "FX": "5",
+    "GJ": "Shipping",
+    "GK": "7 Days",
+    "GL": "Imported",
+    "GN": "United States",
+    "IO": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "FF",
+    "end_col": "FO"
+  },
+  "start_row": 5
+}

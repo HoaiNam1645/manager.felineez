@@ -1,0 +1,12 @@
+{
+  "fixed_columns": {
+    "E": "12253",
+    "F": "Home & Kitchen / Home Décor Products / Doormats",
+    "G": "Custom product"
+  },
+  "images": {
+    "start_col": "FW",
+    "end_col": "GF"
+  },
+  "start_row": 5
+}

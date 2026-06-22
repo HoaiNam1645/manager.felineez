@@ -1,0 +1,38 @@
+{
+  "fixed_columns": {
+    "E": "13018",
+    "F": "Home & Kitchen / Seasonal Décor / Nativity / Tabletop Scenes",
+    "G": "Custom product",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "N": "{sku}",
+    "O": "Add",
+    "U": "🎄 Festive & Meaningful Gift: Perfect for Christmas, birthdays, or any special occasion – makes every moment extra special!",
+    "CQ": "{option1}",
+    "CO": "Size",
+    "DO": "{price}",
+    "DN": "100",
+    "DR": "0.5",
+    "DS": "18",
+    "DT": "18",
+    "DU": "5",
+    "DV": "Single set",
+    "DW": "No",
+    "DX": "1",
+    "DY": "pack",
+    "EG": "Wooden Block",
+    "EH": "7 Days",
+    "EI": "Imported",
+    "EK": "United States",
+    "GL": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DC",
+    "end_col": "DL"
+  },
+  "start_row": 5
+}

@@ -1,0 +1,35 @@
+{
+  "fixed_columns": {
+    "E": "12141",
+    "F": "Home & Kitchen / Home Décor Products / Home Décor Accents / Hanging Ornaments",
+    "G": "Custom product",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "N": "{sku}",
+    "O": "Add",
+    "U": "🎄 Festive & Meaningful Gift: Perfect for Christmas, Valentine’s, birthdays, or any special occasion – makes every moment extra special!",
+    "CD": "Use Without Electricity",
+    "DU": "{option1}",
+    "DS": "Size",
+    "ES": "{price}",
+    "ER": "200",
+    "EV": "0.5",
+    "EW": "18",
+    "EX": "18",
+    "EY": "5",
+    "FK": "Shipping ornament",
+    "FL": "7 Days",
+    "FM": "Imported",
+    "FO": "United States",
+    "HP": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "EG",
+    "end_col": "EP"
+  },
+  "start_row": 5
+}

@@ -1,0 +1,12 @@
+{
+  "categoryId": "11899",
+  "productName": "Blanket",
+  "description": "Design description: Full-width printing, single-sided printing.\nMaterial description: Made of premium anti-pilling flannel, softer, more comfortable, and warmer.\nProduct performance:\n1: Soft and comfortable – This flannel blanket is crafted from high-quality flannel fabric with a smooth and delicate touch.\n2: Excellent thermal insulation – Flannel offers great heat retention and effectively blocks cold air.\n3: Durable and long-lasting – Made with anti-pilling technology, this flannel blanket is durable and not easy to wear, fade, or shed.\nSize Options:\n• 30 × 40 inch — Perfect for babies, toddlers, pets, stroller blanket, or small lap blanket.\n• 40 × 50 inch — Great as a small throw blanket for sofa, office nap, kids, or travel.\n• 51 × 60 inch — Classic throw size, suitable for adults, couch, bed, and daily home use.\n• 60 × 80 inch — Large bed blanket size, ideal for full/queen bed, family use, and extra warmth.",
+  "variants": [
+    { "option1": "30 x 40 inch", "price": 127.72 },
+    { "option1": "40 x 50 inch", "price": 183.27 },
+    { "option1": "51 x 60 inch", "price": 216.61 },
+    { "option1": "60 x 80 inch", "price": 255.5 }
+  ],
+  "availableConfigs": ["NORMAL", "CUSTOM"]
+}

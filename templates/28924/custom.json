@@ -1,0 +1,39 @@
+{
+  "fixed_columns": {
+    "E": "28924",
+    "F": "Clothing, Shoes & Jewelry / Uniforms, Work & Safety / Clothing / Graduation Apparel & Accessories / Accessories / Stoles",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "GB": "{option1}",
+    "GX": "https://wecatmedia.space/20ksold-team/Color.png",
+    "GC": "{option2}",
+    "GA": "Color × Size",
+    "GZ": "{price}",
+    "GY": "200",
+    "HC": "0.5",
+    "HD": "18",
+    "HE": "18",
+    "HF": "5",
+    "HG": "Single set",
+    "HH": "No",
+    "HI": "1",
+    "HJ": "pack",
+    "HR": "Shipping Stoles",
+    "HS": "7 Days",
+    "HT": "Imported",
+    "HV": "United States",
+    "JW": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "GO",
+    "end_col": "GW"
+  },
+  "start_row": 5
+}

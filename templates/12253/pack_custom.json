@@ -1,0 +1,37 @@
+{
+  "fixed_columns": {
+    "E": "12253",
+    "F": "Home & Kitchen / Home Décor Products / Doormats",
+    "G": "Custom product",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "N": "{sku}",
+    "O": "Add",
+    "U": "🎄 Festive & Meaningful Gift: Perfect for Christmas, birthdays, or any special occasion – makes every moment extra special!",
+    "CN": "Flannel",
+    "EZ": "No",
+    "FA": "No",
+    "FT": "{option1}",
+    "FK": "{option2}",
+    "FI": "Quantity × Size",
+    "GI": "{price}",
+    "GH": "100",
+    "GL": "0.5",
+    "GM": "18",
+    "GO": "5",
+    "HA": "Shipping Doormat",
+    "HB": "7 Days",
+    "HC": "Imported",
+    "HE": "United States",
+    "JF": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "FW",
+    "end_col": "GF"
+  },
+  "start_row": 5
+}

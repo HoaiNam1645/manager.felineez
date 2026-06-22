@@ -1,0 +1,36 @@
+{
+  "fixed_columns": {
+    "E": "10334",
+    "F": "Home & Kitchen / Kitchen & Dining / Storage & Organization / Thermoses / Insulated Beverage Containers / Tumblers",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "BY": "Stainless Steel",
+    "CT": "{option1}",
+    "DC": "{option2}",
+    "CR": "Quantity × Size",
+    "DQ": "{price}",
+    "DP": "50",
+    "DT": "0.5",
+    "DU": "18",
+    "DV": "18",
+    "DW": "5",
+    "EI": "Shipping Tumblers",
+    "EJ": "7 Days",
+    "EK": "Imported",
+    "EL": "I will ship this item myself",
+    "EM": "United States",
+    "GN": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DF",
+    "end_col": "DO"
+  },
+  "start_row": 5
+}

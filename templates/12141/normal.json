@@ -1,0 +1,39 @@
+{
+  "fixed_columns": {
+    "E": "12141",
+    "F": "Custom product",
+    "K": "{product_name}",
+    "S": "{product_description}",
+    "G": "Combined techniques",
+    "H": "Organic material (e.g., acrylic/resin) customization technique",
+    "I": "Laser cutting - image",
+    "J": "Laser cutting - text",
+    "M": "{sku}",
+    "N": "Add",
+    "CC": "Use Without Electricity",
+    "DM": "Ceramic",
+    "DT": "{option1}",
+    "EC": "{option2}",
+    "DR": "Quantity × Size",
+    "ER": "{price}",
+    "EQ": "100",
+    "EU": "0.5",
+    "EV": "18",
+    "EW": "18",
+    "EX": "5",
+    "EY": "Single set",
+    "EZ": "No",
+    "FA": "1",
+    "FB": "pack",
+    "FJ": "Shipping ornament",
+    "FK": "7 Days",
+    "FL": "Imported",
+    "FN": "United States",
+    "HO": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "EF",
+    "end_col": "EO"
+  },
+  "start_row": 5
+}

@@ -1,0 +1,173 @@
+[
+  {
+    "categoryId": "9519",
+    "productName": "Egg-Cups",
+    "configs": [
+      "PACK_CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "10334",
+    "productName": "Tumblers",
+    "configs": [
+      "CUSTOM",
+      "PACK_CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "10585",
+    "productName": "Mugs",
+    "configs": [
+      "NORMAL",
+      "CUSTOM",
+      "PACK",
+      "PACK_CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "10601",
+    "productName": "Wiskey Glass",
+    "configs": [
+      "PACK_CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "11459",
+    "productName": "Table Runner",
+    "configs": [
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "11666",
+    "productName": "Banners",
+    "configs": [
+      "NORMAL"
+    ]
+  },
+  {
+    "categoryId": "11899",
+    "productName": "Blanket",
+    "configs": [
+      "NORMAL",
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "12042",
+    "productName": "Pillow",
+    "configs": [
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "12141",
+    "productName": "Ornament",
+    "configs": [
+      "NORMAL",
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "12193",
+    "productName": "Acrylic Blocks",
+    "configs": [
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "12253",
+    "productName": "Doormat",
+    "configs": [
+      "NORMAL",
+      "CUSTOM",
+      "PACK_CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "12869",
+    "productName": "Poster",
+    "configs": [
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "13018",
+    "productName": "Wooden Block",
+    "configs": [
+      "NORMAL"
+    ]
+  },
+  {
+    "categoryId": "17332",
+    "productName": "Wrapping Paper",
+    "configs": [
+      "NORMAL"
+    ]
+  },
+  {
+    "categoryId": "22120",
+    "productName": "Car Visor Clip",
+    "configs": [
+      "PACK",
+      "PACK_CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "24376",
+    "productName": "Phone Case",
+    "configs": [
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "24675",
+    "productName": "Flag",
+    "configs": [
+      "NORMAL",
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "28924",
+    "productName": "Graduation Stole",
+    "configs": [
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "29007",
+    "productName": "Bikini",
+    "configs": [
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "30152",
+    "productName": "Cap",
+    "configs": [
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "30471",
+    "productName": "Hawaiian Shirt",
+    "configs": [
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "40381",
+    "productName": "Booktracker",
+    "configs": [
+      "CUSTOM"
+    ]
+  },
+  {
+    "categoryId": "12217",
+    "productName": "Tapestry",
+    "configs": [
+      "CUSTOM"
+    ]
+  }
+]

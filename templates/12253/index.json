@@ -1,0 +1,10 @@
+{
+  "categoryId": "12253",
+  "productName": "Doormat",
+  "description": "🌿 Botanical Bath Mat – Step Into Comfort & Style! 🌿\n🛁 Upgrade Your Bathroom Experience\nBring a touch of elegance and relaxation to your space with our Botanical Bath Mat. Perfect for anyone who appreciates both modern aesthetics and everyday practicality in their home essentials.\n\n🛍️ Why You'll Love Our Botanical Bath Mat:\n• Plush Support: Made with 100% memory foam microfiber for soft, cloud-like comfort.\n• Non-Slip Backing: Stays securely in place to help prevent slips and falls.\n• Quick-Drying & Absorbent: Keeps your bathroom floor clean, dry, and fresh.\n• Chic Boho Aesthetic: A mix of beauty and function, fitting seamlessly with any decor style.\n\n🎁 A Beautiful Upgrade for Any Home – Perfect for personal use or as a thoughtful housewarming gift.",
+  "variants": [
+    { "option1": "40 x 60 cm", "price": 124 },
+    { "option1": "50 x 80 cm", "price": 137 }
+  ],
+  "availableConfigs": ["NORMAL", "CUSTOM", "PACK_CUSTOM"]
+}

@@ -1,0 +1,14 @@
+{
+  "categoryId": "40381",
+  "productName": "Booktracker",
+  "description": "Material: Wood\n\nPRODUCT INCLUDES:\n• 1 Wooden Book Tracker Sign\n• 3 Number Packs (digits 0–9) for customizable reading progress\n• 1 Wooden Base for stable tabletop display\n• 1 Giftable Box – perfect for gifting\n\n📏 MATERIAL & SIZE:\n• Available Heights: 7\", 8\", 9\", or 10\"\n• Material: Premium multi-layer wood creating a dimensional 3D look\n• Layer Thickness: 5 mm backboard for strong support, 3 mm detailed bookshelf layer, 2 mm interchangeable number plates, 5 mm wooden base for sturdy standing\n• Crafted for durability with an elegant, handcrafted finish.\n\n✨ PERSONALIZATION:\nCustomize the bottom panel with your name or custom text (e.g. \"Sarah's Library\") to create a one-of-a-kind reading nook or home library decor.\nIncludes interchangeable wooden numbers, allowing you to easily update your book count as you read throughout the year.",
+  "variants": [
+    { "option1": "5x6 inches", "price": 188.95 },
+    { "option1": "6x7 inches", "price": 216.95 },
+    { "option1": "7x8 inches", "price": 249.95 },
+    { "option1": "8x9 inches", "price": 271.95 },
+    { "option1": "9x10 inches", "price": 305.95 },
+    { "option1": "10x11 inches", "price": 327.95 }
+  ],
+  "availableConfigs": ["CUSTOM"]
+}

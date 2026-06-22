@@ -1,0 +1,36 @@
+{
+  "fixed_columns": {
+    "E": "12253",
+    "F": "Home & Kitchen / Home Décor Products / Doormats",
+    "G": "Normal product",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "U": "🎄 Festive & Meaningful Gift: Perfect for Christmas, birthdays, or any special occasion – makes every moment extra special!",
+    "CN": "Flannel",
+    "EZ": "No",
+    "FA": "No",
+    "FK": "{option1}",
+    "FI": "Size",
+    "GI": "{price}",
+    "GH": "100",
+    "GL": "0.5",
+    "GM": "18",
+    "GO": "5",
+    "GP": "Single set",
+    "GQ": "No",
+    "GR": "1",
+    "GS": "pack",
+    "HA": "Shipping Doormat",
+    "HB": "7 Days",
+    "HC": "Imported",
+    "HE": "United States",
+    "JF": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "FW",
+    "end_col": "GF"
+  },
+  "start_row": 5
+}

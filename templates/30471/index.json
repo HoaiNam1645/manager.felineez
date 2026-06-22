@@ -1,0 +1,15 @@
+{
+  "categoryId": "30471",
+  "productName": "Hawaiian Shirt",
+  "description": "When you've got an exciting holiday ahead and you need to pack the perfect getaway outfit, there is no better choice than our AOP Pocket Regular Fit Hawaiian Shirt. With our various sizes, you can get your best-fit shirt and look absolutely stunning in it.\n\n• Material: 100% Polyester – Lightweight, wrinkle-free, and durable material.\n• Full front coconut button closure.\n• Cuban collar with short sleeves for relaxed styling.\n• Left-side pocket for easy storage.\n• Regular fit makes it comfortable to wear on various occasions, especially during the hot summer season.\n• Size: XS-3XL\n\nOur Pocket Regular Fit Hawaiian is perfect to wear on your beach holiday, or when you're hanging out at a summer party, carnival, festival, and more.",
+  "variants": [
+    { "option1": "Multicolor", "option2": "XS", "price": 183 },
+    { "option1": "Multicolor", "option2": "S", "price": 183 },
+    { "option1": "Multicolor", "option2": "M", "price": 183 },
+    { "option1": "Multicolor", "option2": "L", "price": 183 },
+    { "option1": "Multicolor", "option2": "XL", "price": 183 },
+    { "option1": "Multicolor", "option2": "XXL", "price": 183 },
+    { "option1": "Multicolor", "option2": "XXXL", "price": 183 }
+  ],
+  "availableConfigs": ["CUSTOM"]
+}

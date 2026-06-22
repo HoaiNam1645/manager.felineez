@@ -1,0 +1,37 @@
+{
+  "fixed_columns": {
+    "E": "12869",
+    "F": "Home & Kitchen / Wall Art / Posters & Prints",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "DJ": "{option1}",
+    "DH": "Size",
+    "EH": "{price}",
+    "EG": "200",
+    "EK": "0.5",
+    "EL": "18",
+    "EM": "18",
+    "EN": "5",
+    "EO": "Single set",
+    "EP": "No",
+    "EQ": "1",
+    "ER": "pack",
+    "EZ": "Shipping Poster",
+    "FA": "7 Days",
+    "FB": "Imported",
+    "FD": "United States",
+    "HE": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DV",
+    "end_col": "EE"
+  },
+  "start_row": 5
+}

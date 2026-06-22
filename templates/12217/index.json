@@ -1,0 +1,16 @@
+{
+  "categoryId": "12217",
+  "productName": "Tapestry",
+  "description": "Type: 100% Polyester, Home Decor, One-Side Printing\n\nMade of high quality peach skin fabric (100% polyester), perfect for both indoor and outdoor use. This tapestry can be easily hung and retracted, making it versatile for any occasion.\n\nPersonalized with a photo collage, printed in full color for a unique and vibrant design that brings your space to life.\n\nFour hanging ropes, easy to hang without damaging the wall.\n\nIdeal for wall hangings, dorm decorations, beach throws, picnic sheets, porch hangings, tablecloths, or any occasion that needs a touch of character and style.\n\nTo maintain its quality, hand wash or machine wash gently. Iron at low temperature. Do not bleach.",
+  "variants": [
+    { "option1": "12x40 inch", "price": 152.78 },
+    { "option1": "15x50 inch", "price": 158.33 },
+    { "option1": "20x63 inch", "price": 169.44 },
+    { "option1": "24x75 inch", "price": 180.56 },
+    { "option1": "40x60 inch", "price": 169.44 },
+    { "option1": "60x51 inch", "price": 194.39 },
+    { "option1": "60x80 inch", "price": 233.28 },
+    { "option1": "60x90 inch", "price": 255.5 }
+  ],
+  "availableConfigs": ["CUSTOM"]
+}

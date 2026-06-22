@@ -1,0 +1,8 @@
+{
+  "crons": [],
+  "functions": {
+    "api/**/*.ts": {
+      "includeFiles": "templates/**"
+    }
+  }
+}

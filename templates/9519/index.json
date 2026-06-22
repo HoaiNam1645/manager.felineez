@@ -1,0 +1,13 @@
+{
+  "categoryId": "9519",
+  "productName": "Egg-Cups",
+  "description": "🐣 Personalized First Easter 2026 Wooden Egg\nCelebrate your baby's very first Easter with a keepsake you'll treasure forever. This Personalized First Easter 2026 Wooden Egg is custom engraved with your little one's name, creating a meaningful heirloom to remember this special milestone.\n\n✨ Why You'll Love It:\n• Custom engraved with your baby's name\n• \"First Easter 2026\" timeless keepsake design\n• Optional adorable bunny engraving styles\n• Lightweight and perfect for Easter baskets\n• Beautiful photo prop for baby's first Easter pictures\n• A thoughtful heirloom gift for baby girls and boys\n\n🌿 Premium Natural Wood – Each egg is crafted from natural wood, showcasing unique grain patterns and tones.",
+  "variants": [
+    { "option1": "1.6 x 2.4inch", "option2": "Pack 1", "price": 94.39 },
+    { "option1": "1.6 x 2.4inch", "option2": "Pack 2", "price": 184.70 },
+    { "option1": "1.6 x 2.4inch", "option2": "Pack 3", "price": 275.16 },
+    { "option1": "1.6 x 2.4inch", "option2": "Pack 5", "price": 460.94 },
+    { "option1": "1.6 x 2.4inch", "option2": "Pack 10", "price": 920.88 }
+  ],
+  "availableConfigs": ["PACK_CUSTOM"]
+}

@@ -1,0 +1,38 @@
+{
+  "fixed_columns": {
+    "E": "24376",
+    "F": "Cell Phones & Accessories / Cases, Holsters & Sleeves / Basic Cases",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "DG": "{option1}",
+    "DH": "{option2}",
+    "DF": "Color × Compatible Model",
+    "DT": "{price}",
+    "DS": "200",
+    "DW": "0.5",
+    "DX": "18",
+    "DY": "18",
+    "DZ": "5",
+    "EA": "Single set",
+    "EB": "No",
+    "EC": "1",
+    "ED": "pack",
+    "EL": "Shipping Phonecase",
+    "EM": "7 Days",
+    "EN": "Imported",
+    "EP": "United States",
+    "GQ": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DI",
+    "end_col": "DR"
+  },
+  "start_row": 5
+}

@@ -1,0 +1,39 @@
+{
+  "fixed_columns": {
+    "E": "11899",
+    "F": "Custom product",
+    "K": "{product_name}",
+    "S": "{product_description}",
+    "G": "Combined techniques",
+    "H": "Organic material (e.g., acrylic/resin) customization technique",
+    "I": "Laser cutting - image",
+    "J": "Laser cutting - text",
+    "M": "{sku}",
+    "N": "Add",
+    "T": "🎄 Festive & Meaningful Gift: Perfect for Christmas, birthdays, or any special occasion – makes every moment extra special!",
+    "DT": "{option1}",
+    "DR": "Size",
+    "EX": "{price}",
+    "EF": "Upload size chart image",
+    "EG": "https://wecatmedia.space/alive-team/1766544612669-2fcea0d0-20251224-094954.jpg",
+    "EW": "100",
+    "FA": "0.5",
+    "FB": "18",
+    "FC": "18",
+    "FD": "5",
+    "FE": "Single set",
+    "FF": "No",
+    "FG": "1",
+    "FH": "pack",
+    "FP": "Shipping Blanket",
+    "FQ": "7 Days",
+    "FR": "Imported",
+    "FT": "United States",
+    "HU": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "EL",
+    "end_col": "EU"
+  },
+  "start_row": 5
+}

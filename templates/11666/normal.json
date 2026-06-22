@@ -1,0 +1,38 @@
+{
+  "fixed_columns": {
+    "E": "11666",
+    "F": "Custom product",
+    "K": "{product_name}",
+    "S": "{product_description}",
+    "G": "Combined techniques",
+    "H": "Organic material (e.g., acrylic/resin) customization technique",
+    "I": "Laser cutting - image",
+    "J": "Laser cutting - text",
+    "M": "{sku}",
+    "N": "Add",
+    "T": "🎄 Festive & Meaningful Gift: Perfect for Christmas, birthdays, or any special occasion – makes every moment extra special!",
+    "CO": "Use Without Electricity",
+    "DU": "{option1}",
+    "DS": "Size",
+    "ES": "{price}",
+    "ER": "100",
+    "EV": "0.5",
+    "EW": "18",
+    "EX": "18",
+    "EY": "5",
+    "EZ": "Single set",
+    "FA": "No",
+    "FB": "1",
+    "FC": "pack",
+    "FK": "Shipping Banner",
+    "FL": "7 Days",
+    "FM": "Imported",
+    "FO": "United States",
+    "HP": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "EG",
+    "end_col": "EP"
+  },
+  "start_row": 5
+}

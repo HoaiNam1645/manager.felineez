@@ -1,0 +1,211 @@
+// Prisma schema for NH-Media dashboard (MySQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ AUTH & TEAMS ============
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String?
+  createdAt DateTime @default(now())
+
+  users         User[]
+  mailAccounts  MailAccount[]
+  records       Record[]
+  manualCosts   ManualCost[]
+  notifications Notification[]
+  products      Product[]
+  categories    Category[]
+}
+
+enum Role {
+  OWNER
+  USER
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  password        String
+  role            Role     @default(USER)
+  teamId          String
+  permissions     Json?
+  allowedAccounts Json?
+  fcmTokens       Json?
+  createdAt       DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+}
+
+// ============ MAIL ACCOUNTS ============
+
+enum Provider {
+  GMAIL
+  OUTLOOK
+}
+
+model MailAccount {
+  id                     String    @id @default(cuid())
+  teamId                 String
+  email                  String
+  label                  String?
+  provider               Provider
+  token                  String    @db.Text
+  lastSyncedAt           DateTime?
+  historySyncedUntil     DateTime?
+  historicalSyncComplete Boolean   @default(false)
+  scanStartDate          DateTime?
+  lastKnownHistoryId     String?
+  platforms              Json?
+  sortOrder              Int?
+  createdAt              DateTime  @default(now())
+
+  team    Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  records Record[]
+
+  @@unique([teamId, email])
+  @@index([teamId])
+}
+
+// ============ RECORDS (orders, funds, case, help) ============
+
+enum RecordKind {
+  ORDER
+  FUNDS
+  CASE
+  HELP
+}
+
+model Record {
+  id           String     @id @default(cuid())
+  teamId       String
+  accountId    String?
+  emailId      String?
+  dtLocal      DateTime
+  amount       Decimal    @db.Decimal(18, 4)
+  orderId      String?
+  currency     String?    @db.VarChar(8)
+  source       String?
+  accountEmail String?
+  kind         RecordKind
+  caseMsg      String?    @db.Text
+  helpKind     String?
+  costTotal    Decimal?   @db.Decimal(18, 4)
+  ffCode       String?
+  productName  String?    @db.Text
+  details      Json?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  team    Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  account MailAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@unique([teamId, emailId])
+  @@index([teamId, dtLocal])
+  @@index([teamId, orderId])
+  @@index([teamId, kind])
+}
+
+// ============ MANUAL COSTS ============
+
+model ManualCost {
+  id           String   @id @default(cuid())
+  teamId       String
+  providerName String
+  cost         Decimal  @db.Decimal(18, 4)
+  date         DateTime
+  timeZone     String?
+  currency     String?  @db.VarChar(8)
+  createdAt    DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, date])
+}
+
+// ============ NOTIFICATIONS ============
+
+model Notification {
+  id        String   @id @default(cuid())
+  teamId    String
+  type      String?
+  title     String?
+  body      String?  @db.Text
+  data      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, createdAt])
+}
+
+// ============ PRODUCTS (upload + listing) ============
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  teamId    String
+  name      String
+  slug      String
+  createdAt DateTime @default(now())
+
+  team     Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([teamId, slug])
+  @@index([teamId])
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  teamId       String
+  categoryId   String?
+  title        String?      @db.Text
+  listingTitle String?      @db.Text
+  price        Decimal?     @db.Decimal(18, 2)
+  currency    String?       @db.VarChar(8)
+  description String?       @db.Text
+  images      Json?         // array of { url, publicId, source } from Cloudinary
+  status      ProductStatus @default(DRAFT)
+  source      String?       // 'local' | 'drive'
+  createdById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  team     Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([teamId, createdAt])
+  @@index([teamId, status])
+  @@index([teamId, categoryId])
+}
+
+// ============ APP-WIDE SETTINGS ============
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// ============ LARK WEBHOOK IDEMPOTENCY ============
+
+model LarkEvent {
+  id          String   @id
+  processedAt DateTime @default(now())
+}

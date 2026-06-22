@@ -1,0 +1,39 @@
+{
+  "fixed_columns": {
+    "E": "10585",
+    "F": "Home & Kitchen / Kitchen & Dining / Dining & Entertaining / Glassware & Drinkware / Cups, Mugs, & Saucers / Coffee Cups & Mugs",
+    "G": "Custom product",
+    "H": "Combined techniques",
+    "I": "Organic material (e.g., acrylic/resin) customization technique",
+    "J": "Laser cutting - image",
+    "K": "Laser cutting - text",
+    "L": "{product_name}",
+    "T": "{product_description}",
+    "N": "{sku}",
+    "O": "Add",
+    "BY": "Ceramic",
+    "DE": "{option1}",
+    "DF": "{option2}",
+    "DD": "Color × Size",
+    "EC": "{price}",
+    "EB": "200",
+    "EF": "0.5",
+    "EG": "18",
+    "EH": "18",
+    "EI": "5",
+    "EJ": "Single set",
+    "EK": "No",
+    "EL": "1",
+    "EM": "pack",
+    "EU": "Mugs",
+    "EV": "7 Days",
+    "EW": "Imported",
+    "EY": "United States",
+    "GZ": "No Warning Applicable"
+  },
+  "images": {
+    "start_col": "DR",
+    "end_col": "EA"
+  },
+  "start_row": 5
+}

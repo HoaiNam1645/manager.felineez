@@ -1,0 +1,12 @@
+{
+  "categoryId": "13018",
+  "productName": "Wooden Block",
+  "description": "🌿 Custom Shape Wooden Block – Personalized Photo Gift 🌿\nTurn your favorite memories into a warm, timeless keepsake. Our custom wooden block is handcrafted from premium solid wood, making it a meaningful gift or beautiful home décor piece.\n✨ Product Details\n• Material: Premium 3-layer solid wood\n• Thickness: 15mm total (3 layers × 5mm)\n• Printing: Single-sided, vibrant and high-quality print\n• Sizes: 4\" | 5\" | 6\" | 8\"\nPerfect for desks, shelves, or heartfelt gifts 💛",
+  "variants": [
+    { "option1": "4 inch", "price": 100 },
+    { "option1": "5 inch", "price": 110 },
+    { "option1": "6 inch", "price": 120 },
+    { "option1": "8 inch", "price": 130 }
+  ],
+  "availableConfigs": ["NORMAL"]
+}
