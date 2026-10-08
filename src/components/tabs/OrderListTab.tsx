@@ -42,6 +42,36 @@ const FF_PREFIX: { [key: string]: string } = {
 const VISIBLE_ORDER_STATUSES = ORDER_STATUSES.filter(status => status !== 'READY');
 
 const normalizeIdeaName = (value?: string | null) => (value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+const syncDetailsRevenue = (details: Record['details'] | undefined, amount: number, customerName: string): Record['details'] | undefined => {
+    if (!details) return undefined;
+    const financials = details.financials;
+    const shipping = Number(financials?.shipping || 0);
+    const tax = Number(financials?.tax || 0);
+    const discount = Number(financials?.discount || 0);
+    const itemTotal = roundMoney(Math.max(amount + discount - shipping - tax, 0));
+    const currentItems = Array.isArray(details.items) ? details.items : [];
+    const nextItems = currentItems.map((item) => {
+            if (currentItems.length !== 1) return item;
+            const quantity = Math.max(Number(item.quantity || 1), 1);
+            return { ...item, price: roundMoney(itemTotal / quantity) };
+        });
+
+    return {
+        ...details,
+        customerName,
+        items: nextItems,
+        financials: {
+            itemTotal,
+            discount,
+            shipping,
+            tax,
+            orderTotal: roundMoney(amount),
+        },
+    };
+};
 interface OrderListTabProps {
     processedData: ProcessedData;
     dayFilter: string | null;
@@ -129,10 +159,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
 
     const handleSaveEdit = async (recordId: string, f: EditOrderFields) => {
         const rec = allRecords.find(r => r.id === recordId);
-        const details = rec?.details ? {
-            ...rec.details,
-            customerName: f.customer_name,
-        } : undefined;
+        const details = syncDetailsRevenue(rec?.details, f.amount, f.customer_name);
         await updateOrderFields(recordId, {
             order_id: f.order_id,
             amount: f.amount,
