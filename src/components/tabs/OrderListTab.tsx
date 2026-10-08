@@ -8,7 +8,7 @@ import { ORDER_LIST_INDICES } from '../../constants/dataIndices';
 import { formatDateEfficiently } from '../../utils/dateFormatter';
 import { ORDER_STATUSES, ORDER_STATUS_LABELS } from '../../constants/orderStatus';
 import { useDashboard } from '../../contexts/DashboardContext';
-import { createManualOrderRecord, updateOrderFields } from '../../services/firebaseService';
+import { createManualOrderRecord, deleteRecord, updateOrderFields } from '../../services/firebaseService';
 import EditOrderModal, { EditOrderFields } from '../EditOrderModal';
 import ManualOrderModal from '../ManualOrderModal';
 import GoogleSheetModal from '../GoogleSheetModal';
@@ -453,6 +453,20 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
         addNotification(`Đã tạo đơn #${saved.order_id || saved.id}.`, 'success');
     };
 
+    const handleDeleteOrder = async (recordId: string) => {
+        const rec = allRecords.find(r => r.id === recordId);
+        const label = rec?.order_id ? `#${rec.order_id}` : 'đơn này';
+        if (!window.confirm(`Xoá ${label} khỏi hệ thống? Đơn sẽ không còn hiển thị và không tính vào thống kê.`)) return;
+        try {
+            await deleteRecord('', recordId);
+            setRecords(prev => prev.filter(r => r.id !== recordId));
+            addNotification(`Đã xoá ${label}.`, 'success');
+        } catch (error) {
+            console.error('Delete order failed:', error);
+            addNotification('Xoá đơn thất bại, thử lại giúp mình.', 'error');
+        }
+    };
+
     return (
         <div className="h-full bg-gray-50 dark:bg-gray-900 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] relative">
             <div className="p-2 md:p-6">
@@ -536,6 +550,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                             onEditOrder={setEditFor}
                             onFulfillOrder={setFulfillFor}
                             onDesignOrder={goDesign}
+                            onDeleteOrder={handleDeleteOrder}
                             mobileRowHeight={340}
                             autoHeight={false}
                             scrollParentId="orders-list"

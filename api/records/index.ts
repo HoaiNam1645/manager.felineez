@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'GET') {
       const { from, to, accountId, kind, q, limit = '5000', cursor } = req.query as Record<string, string>;
 
-      const where: any = { teamId: auth.teamId };
+      const where: any = { teamId: auth.teamId, deletedAt: null };
 
       // Server-side visibility: non-owners only see records of shops they can
       // access (leader = team's shops, user = own/allowed shops).
@@ -95,7 +95,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const cleanSku = sku.trim().slice(0, 190);
       if (!cleanSku) return badRequest(res, 'sku is required');
 
-      const where: any = { teamId: auth.teamId, kind: 'ORDER', id: { in: cleanIds } };
+      const where: any = { teamId: auth.teamId, kind: 'ORDER', deletedAt: null, id: { in: cleanIds } };
       const visibleEmails = await visibleAccountEmails(auth);
       if (visibleEmails) where.accountEmail = { in: visibleEmails };
 
@@ -241,7 +241,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .map((s) => s.id);
       if (producingIds.length > 0) {
         await prisma.record.updateMany({
-          where: { id: { in: producingIds } },
+          where: { id: { in: producingIds }, deletedAt: null },
           data: { orderStatus: 'PRODUCING' },
         });
       }

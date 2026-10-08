@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!event || !orderId) return res.status(200).json({ ok: true, skipped: 'missing event/order_id' });
 
     const records = await prisma.record.findMany({
-      where: { orderId, kind: 'ORDER', ffCode: { startsWith: 'MGO-' } },
+      where: { orderId, kind: 'ORDER', deletedAt: null, ffCode: { startsWith: 'MGO-' } },
       select: { id: true, orderStatus: true },
     });
     if (records.length === 0) return res.status(200).json({ ok: true, matched: 0 });

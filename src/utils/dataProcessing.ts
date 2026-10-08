@@ -438,6 +438,7 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
         if (o.email_id) {
             actions.push({ type: 'resync', label: 'Resync', id: o.id! });
         }
+        actions.push({ type: 'delete', label: 'Xoá', id: o.id! });
 
         // Map Source
         let displaySource = o.source;

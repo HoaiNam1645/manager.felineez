@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (provider === 'lemiex' || provider === 'hogoto') {
             const prefix = provider === 'lemiex' ? 'LMX-' : 'HGT-';
             const rows = await prisma.record.findMany({
-              where: { teamId: auth.teamId, ffCode: { startsWith: prefix } },
+              where: { teamId: auth.teamId, deletedAt: null, ffCode: { startsWith: prefix } },
               orderBy: { updatedAt: 'desc' },
               skip: (page - 1) * limit,
               take: limit,
@@ -131,6 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const record = await prisma.record.findUnique({ where: { id: String(recordId) } });
       if (!record || record.teamId !== auth.teamId) return notFound(res);
+      if (record.deletedAt) return notFound(res);
 
       let factoryOrderId: string | null = null;
       let existed = false;

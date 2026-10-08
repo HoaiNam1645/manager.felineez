@@ -66,7 +66,7 @@ const useContainerSize = (ref: React.RefObject<HTMLDivElement>) => {
 
 // SortDirection type imported from utils now
 
-const DataTable: React.FC<DataTableProps> = ({ headers, data, onViewDayDetails, onViewOrderDetails, onResyncOrder, onChangeOrderStatus, onSaveTracking, onSaveOrderNote, onSaveFfNote, onEditOrder, onFulfillOrder, onDesignOrder, autoHeight = false, mobileRowHeight, forceCardView = false, mobileBreakpoint = 768, columnWidths, scrollParentId }) => {
+const DataTable: React.FC<DataTableProps> = ({ headers, data, onViewDayDetails, onViewOrderDetails, onResyncOrder, onChangeOrderStatus, onSaveTracking, onSaveOrderNote, onSaveFfNote, onEditOrder, onFulfillOrder, onDesignOrder, onDeleteOrder, autoHeight = false, mobileRowHeight, forceCardView = false, mobileBreakpoint = 768, columnWidths, scrollParentId }) => {
     const [sortColumn, setSortColumn] = useState<number | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>(null);
     const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
@@ -258,7 +258,7 @@ const DataTable: React.FC<DataTableProps> = ({ headers, data, onViewDayDetails, 
         'Revenue': 90, 'Cost': 90, 'FF Cost': 90, 'DS Cost': 90, 'Profit': 90, 'Currency': 90,
         'Message': 250, 'Help Kind': 250,
         'FF Code': 110, 'Status': 140, 'Tracking': 110, 'Note': 150, 'FF Note': 150, 'Support': 130,
-        'Actions': 270, 'DateTime': 115, 'Account': 120,
+        'Actions': 315, 'DateTime': 115, 'Account': 120,
     };
     const estimatedMinWidth = headers.reduce(
         (sum, h) => sum + (columnWidths?.[h] ?? MIN_COL_WIDTH[h] ?? 120),
@@ -282,6 +282,7 @@ const DataTable: React.FC<DataTableProps> = ({ headers, data, onViewDayDetails, 
         onEditClick: onEditOrder,
         onFulfillClick: onFulfillOrder,
         onDesignClick: onDesignOrder,
+        onDeleteClick: onDeleteOrder,
         onImageClick: setPreviewImage,
         onRowHeightChange: handleRowHeightChange,
         isMobile,
@@ -350,7 +351,7 @@ const DataTable: React.FC<DataTableProps> = ({ headers, data, onViewDayDetails, 
                                 headerCellClass += 'flex-1 basis-[150px]';
                                 break;
                             case 'Actions':
-                                headerCellClass += 'flex-none w-[270px]';
+                                headerCellClass += 'flex-none w-[315px]';
                                 break;
                             default:
                                 headerCellClass += 'flex-1 basis-[120px]';

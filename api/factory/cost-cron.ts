@@ -142,7 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     mangoIndexCache.clear();
     const limit = Math.min(parseInt((req.query.limit as string) || '40', 10) || 40, 200);
     const rows = await prisma.record.findMany({
-      where: { AND: [{ ffCode: { not: null } }, { ffCode: { not: '' } }], costTotal: null },
+      where: { AND: [{ ffCode: { not: null } }, { ffCode: { not: '' } }], costTotal: null, deletedAt: null },
       orderBy: { createdAt: 'desc' },
       take: limit,
       select: { id: true, ffCode: true, orderId: true, teamId: true, trackingCode: true },

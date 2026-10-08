@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { since, until, status = 'all', teamId, limit = '200', group = '1', markSynced } =
       req.query as Record<string, string>;
 
-    const where: any = { kind: 'ORDER', source: ETSY_ORDER_SOURCE };
+    const where: any = { kind: 'ORDER', source: ETSY_ORDER_SOURCE, deletedAt: null };
     if (teamId) where.teamId = teamId;
 
     const sinceDate = parseDate(since);
@@ -79,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (markSynced === '1' && records.length > 0) {
       await prisma.record.updateMany({
-        where: { id: { in: records.map((r) => r.id) } },
+        where: { id: { in: records.map((r) => r.id) }, deletedAt: null },
         data: { syncStatus: 'SYNCED', syncedAt: new Date() },
       });
     }

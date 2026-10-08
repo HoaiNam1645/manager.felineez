@@ -14,6 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const record = await prisma.record.findUnique({ where: { id } });
     if (!record || record.teamId !== auth.teamId) return notFound(res);
+    if (record.deletedAt && req.method !== 'DELETE') return notFound(res);
 
     // Same shop-level visibility as the list endpoint
     const visibleEmails = await visibleAccountEmails(auth);
@@ -80,7 +81,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'DELETE') {
-      await prisma.record.delete({ where: { id } });
+      if (!record.deletedAt) {
+        await prisma.record.update({ where: { id }, data: { deletedAt: new Date() } });
+      }
       return res.status(204).end();
     }
 

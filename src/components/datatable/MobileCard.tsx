@@ -6,7 +6,7 @@ import OrderStatusSelect from './OrderStatusSelect';
 import { ListChildComponentProps, RowData } from './types';
 import { PaintBrushIcon } from '@heroicons/react/24/outline';
 
-const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<string>, onResyncClick: (id: string) => void, onViewOrderDetails?: (id: string) => void, onViewDayDetails?: (date: string) => void, rowData?: any[], isMobile: boolean = false, onFulfillClick?: (id: string) => void, onEditClick?: (id: string) => void, onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void) => {
+const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<string>, onResyncClick: (id: string) => void, onViewOrderDetails?: (id: string) => void, onViewDayDetails?: (date: string) => void, rowData?: any[], isMobile: boolean = false, onFulfillClick?: (id: string) => void, onEditClick?: (id: string) => void, onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void, onDeleteClick?: (id: string) => void) => {
     if (cell === 'Click for detail' && onViewDayDetails && rowData) {
         const date = rowData[0] as string;
         return (
@@ -89,6 +89,17 @@ const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<strin
                     </button>
                 );
             }
+            if (action.type === 'delete') {
+                return (
+                    <button
+                        key={i}
+                        onClick={() => onDeleteClick && onDeleteClick(action.id)}
+                        className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/50 text-xs font-semibold transition-colors"
+                    >
+                        {action.label}
+                    </button>
+                );
+            }
             return null;
         });
     }
@@ -153,7 +164,7 @@ const ItemDesignButton = ({ productName, recordId, designItemKey, hasDesign, has
 };
 
 const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) => {
-    const { items, headers, loadingItems, statusUpdating, onViewDayDetails, onViewOrderDetails, onResyncClick, onStatusChange, onTrackingClick, onOrderNoteClick, onFfNoteClick, onEditClick, onFulfillClick, onDesignClick, onImageClick, isMobile } = data;
+    const { items, headers, loadingItems, statusUpdating, onViewDayDetails, onViewOrderDetails, onResyncClick, onStatusChange, onTrackingClick, onOrderNoteClick, onFfNoteClick, onEditClick, onFulfillClick, onDesignClick, onDeleteClick, onImageClick, isMobile } = data;
     const row = items[index];
     const hasAttentionNote = row.some((cell: any) =>
         cell &&
@@ -345,7 +356,7 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                     </div>
                     {actions && (
                         <div className="pt-2 border-t border-gray-100 dark:border-gray-700 mt-auto flex justify-end flex-wrap gap-2">
-                            {renderActionCell(actions, actionIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, isMobile, onFulfillClick, onEditClick, onDesignClick)}
+                            {renderActionCell(actions, actionIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, isMobile, onFulfillClick, onEditClick, onDesignClick, onDeleteClick)}
                         </div>
                     )}
                 </div>
@@ -446,7 +457,7 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                     </div>
                     {actions && (
                         <div className="pt-2 border-t border-gray-100 dark:border-gray-700 mt-auto flex justify-end flex-wrap gap-2">
-                            {renderActionCell(actions, actionIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, isMobile, onFulfillClick, onEditClick, onDesignClick)}
+                            {renderActionCell(actions, actionIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, isMobile, onFulfillClick, onEditClick, onDesignClick, onDeleteClick)}
                         </div>
                     )}
                 </div>

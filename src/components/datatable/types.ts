@@ -23,6 +23,7 @@ export interface RowData {
     onEditClick?: (id: string) => void;
     onFulfillClick?: (id: string) => void;
     onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void;
+    onDeleteClick?: (id: string) => void;
     onImageClick: (src: string) => void;
     onRowHeightChange?: (index: number, height: number) => void;
     isMobile: boolean;
@@ -42,6 +43,7 @@ export interface DataTableProps {
     onEditOrder?: (recordId: string) => void;
     onFulfillOrder?: (recordId: string) => void;
     onDesignOrder?: (productName: string, recordId?: string, designItemKey?: string) => void;
+    onDeleteOrder?: (recordId: string) => void;
     autoHeight?: boolean;
     mobileRowHeight?: number;
     forceCardView?: boolean;

@@ -140,6 +140,7 @@ model Record {
   ffNote       String?    @db.VarChar(500)
   productName  String?    @db.Text
   details      Json?
+  deletedAt    DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -162,6 +163,7 @@ model Record {
   @@index([teamId, kind])
   @@index([teamId, syncStatus])
   @@index([teamId, orderStatus])
+  @@index([teamId, deletedAt])
 }
 
 // ============ MANUAL COSTS ============

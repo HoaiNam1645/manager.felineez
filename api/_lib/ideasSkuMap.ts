@@ -46,7 +46,7 @@ export async function fetchIdeasSkuMap(): Promise<Map<string, string>> {
 export async function mapMissingOrderSkusFromIdeas(options: { teamId?: string; limit?: number } = {}): Promise<IdeasSkuMapResult> {
   const skuByName = await fetchIdeasSkuMap();
   const take = Math.min(Math.max(options.limit || 5000, 1), 20000);
-  const where: any = { kind: 'ORDER' };
+  const where: any = { kind: 'ORDER', deletedAt: null };
   if (options.teamId) where.teamId = options.teamId;
 
   const records = await prisma.record.findMany({

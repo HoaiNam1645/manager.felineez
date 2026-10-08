@@ -193,6 +193,7 @@ export async function pushPending(opts: { teamId?: string; limit?: number } = {}
   const where: any = {
     kind: 'ORDER',
     source: ETSY_ORDER_SOURCE,
+    deletedAt: null,
     syncStatus: { in: ['PENDING', 'FAILED'] },
     syncAttempts: { lt: MAX_ATTEMPTS },
   };

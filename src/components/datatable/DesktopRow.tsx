@@ -10,7 +10,7 @@ import { PaintBrushIcon } from '@heroicons/react/24/outline';
 // Helper to check if a header should be hidden on mobile (Only applied in Desktop View now)
 const isHiddenOnDesktopMobileView = (header: string) => HIDDEN_MOBILE_HEADERS.includes(header);
 
-const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<string>, onResyncClick: (id: string) => void, onViewOrderDetails?: (id: string) => void, onViewDayDetails?: (date: string) => void, rowData?: any[], onFulfillClick?: (id: string) => void, onEditClick?: (id: string) => void, onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void) => {
+const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<string>, onResyncClick: (id: string) => void, onViewOrderDetails?: (id: string) => void, onViewDayDetails?: (date: string) => void, rowData?: any[], onFulfillClick?: (id: string) => void, onEditClick?: (id: string) => void, onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void, onDeleteClick?: (id: string) => void) => {
     if (cell === 'Click for detail' && onViewDayDetails && rowData) {
         const date = rowData[0] as string;
         return (
@@ -93,6 +93,17 @@ const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<strin
                     </button>
                 );
             }
+            if (action.type === 'delete') {
+                return (
+                    <button
+                        key={i}
+                        onClick={() => onDeleteClick && onDeleteClick(action.id)}
+                        className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/50 text-xs font-semibold transition-colors"
+                    >
+                        {action.label}
+                    </button>
+                );
+            }
             return null;
         });
     }
@@ -151,7 +162,7 @@ const ItemDesignButton = ({ productName, recordId, designItemKey, hasDesign, has
 };
 
 const DesktopRow = ({ index, style, data }: ListChildComponentProps<RowData>) => {
-    const { items, headers, loadingItems, statusUpdating, onViewDayDetails, onViewOrderDetails, onResyncClick, onStatusChange, onTrackingClick, onOrderNoteClick, onFfNoteClick, onEditClick, onFulfillClick, onDesignClick, onImageClick, onRowHeightChange, columnWidths } = data;
+    const { items, headers, loadingItems, statusUpdating, onViewDayDetails, onViewOrderDetails, onResyncClick, onStatusChange, onTrackingClick, onOrderNoteClick, onFfNoteClick, onEditClick, onFulfillClick, onDesignClick, onDeleteClick, onImageClick, onRowHeightChange, columnWidths } = data;
     const rowRef = React.useRef<HTMLDivElement | null>(null);
     const row = items[index];
     const hasAttentionNote = row.some((cell: any) =>
@@ -253,7 +264,7 @@ const DesktopRow = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                         cellClass += 'flex-1 basis-[150px]';
                         break;
                     case 'Actions':
-                        cellClass += 'flex-none w-[270px] gap-1';
+                        cellClass += 'flex-none w-[315px] gap-1';
                         break;
                     default:
                         cellClass += 'flex-1 basis-[120px]';
@@ -420,7 +431,7 @@ const DesktopRow = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                     if (cell.type === 'button' || cell.type === 'action_group') {
                         return (
                             <div key={cellIndex} className={cellClass} style={customStyle}>
-                                {renderActionCell(cell, cellIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, onFulfillClick, onEditClick, onDesignClick)}
+                                {renderActionCell(cell, cellIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, onFulfillClick, onEditClick, onDesignClick, onDeleteClick)}
                             </div>
                         )
                     }
@@ -449,7 +460,7 @@ const DesktopRow = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                 if (cell === 'Click for detail') {
                     return (
                         <div key={cellIndex} className={cellClass} style={customStyle}>
-                            {renderActionCell(cell, cellIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, onFulfillClick, onEditClick, onDesignClick)}
+                            {renderActionCell(cell, cellIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, onFulfillClick, onEditClick, onDesignClick, onDeleteClick)}
                         </div>
                     )
                 }

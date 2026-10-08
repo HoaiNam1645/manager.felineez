@@ -33,8 +33,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Prefer exact ffCode match (DSH-{id}), fall back to reference_id.
     const records = await prisma.record.findMany({
       where: dreamshipId
-        ? { kind: 'ORDER', ffCode: `DSH-${dreamshipId}` }
-        : { kind: 'ORDER', orderId: referenceId, ffCode: { startsWith: 'DSH-' } },
+        ? { kind: 'ORDER', deletedAt: null, ffCode: `DSH-${dreamshipId}` }
+        : { kind: 'ORDER', deletedAt: null, orderId: referenceId, ffCode: { startsWith: 'DSH-' } },
       select: { id: true, orderStatus: true, costTotal: true },
     });
     if (records.length === 0) return res.status(200).json({ ok: true, matched: 0 });

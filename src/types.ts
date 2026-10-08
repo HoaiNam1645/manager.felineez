@@ -74,6 +74,7 @@ export interface Record {
   product_name?: string;
   details?: OrderDetails; // Added detailed info
   etsy_fees?: EtsyFees; // Imported from the Etsy Sold Orders CSV
+  deleted_at?: string | null;
 }
 
 // Financials imported from the Etsy "Sold Orders" CSV (per order).

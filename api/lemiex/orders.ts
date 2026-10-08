@@ -35,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const record = await prisma.record.findUnique({ where: { id: String(recordId) } });
       if (!record || record.teamId !== auth.teamId) return notFound(res);
+      if (record.deletedAt) return notFound(res);
 
       const cfg = await getLemiexConfig(auth.teamId);
       if (!cfg.apiKey) return badRequest(res, 'Lemiex API key is not configured');

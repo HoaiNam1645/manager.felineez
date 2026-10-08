@@ -109,6 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       where: {
         teamId: auth.teamId,
         kind: 'ORDER',
+        deletedAt: null,
         source: 'Etsy_Sales',
         orderId: { in: ids },
         ...(visibleAccounts ? { accountEmail: { in: visibleAccounts } } : {}),

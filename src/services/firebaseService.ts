@@ -102,6 +102,7 @@ export function mapRecord(raw: any): Record {
     product_name: raw.productName ?? undefined,
     details: raw.details ?? undefined,
     etsy_fees: raw.etsyFees ?? undefined,
+    deleted_at: raw.deletedAt ?? null,
   };
 }
 
