@@ -24,6 +24,7 @@ const MANUAL_FF_CODE_OPTIONS = [
     'zootop',
     'dreamship',
     'vtn',
+    'merchize',
 ];
 
 export interface EditOrderFields {
