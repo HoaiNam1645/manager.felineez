@@ -25,12 +25,17 @@ const Tabs: React.FC = () => {
       if (role === 'owner') {
         return true; // Owner sees all
       }
+      if (tab === 'Products') {
+        return true;
+      }
+      if (role === 'design') {
+        return tab === 'Overview' || tab === 'Order List' || tab === 'Products';
+      }
 
       // User role - check permissions
       switch (tab) {
         case 'Overview':
         case 'Order List':
-        case 'Products':
         case 'Support':
           return permissions.viewSales;
 

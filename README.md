@@ -172,3 +172,5 @@ README này đóng vai trò là cơ sở để bao phủ test case. Các khu v�
     *   **CRUD**: Thêm chi phí thủ công -> Kiểm tra hiển thị trong bảng.
     *   **Điều hướng**: Chuyển tab, Bật/tắt menu mobile.
     *   **Export**: Chạy luồng xuất dữ liệu.
+
+# manager.felineez

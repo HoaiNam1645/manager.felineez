@@ -1,7 +1,8 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDashboard } from '../contexts/DashboardContext';
 import { useUI } from '../contexts/UIContext';
+import { captureProductsReturnState } from '../utils/productReturnState';
 
 import { getPermittedTabs } from '../utils/permissions';
 import {
@@ -9,7 +10,10 @@ import {
     DocumentTextIcon,
     QuestionMarkCircleIcon,
     TruckIcon,
-    TagIcon
+    TagIcon,
+    UserGroupIcon,
+    ChevronDownIcon,
+    ChartBarIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -19,6 +23,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { role, permissions, handleLogout } = useDashboard();
     const {
         activeTab,
@@ -28,6 +33,39 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
         setIsAccountManagerOpen,
         setIsTabSettingsOpen,
     } = useUI();
+
+    // "User Management" group (owner only): /users + /teams sub-menu
+    const currentSeg = location.pathname.split('/').filter(Boolean)[0] || '';
+    const currentSub = location.pathname.split('/').filter(Boolean)[1] || '';
+    const isUmActive = currentSeg === 'users' || currentSeg === 'teams';
+    const [umOpen, setUmOpen] = useState(isUmActive);
+
+    // "Fulfill" group: Dashboard (/fulfill) + Supplier (/fulfill?section=factory)
+    const sectionParam = new URLSearchParams(location.search).get('section');
+    const fulfillSub = sectionParam === 'factory' || sectionParam === 'lemiex' ? 'factory' : 'overview';
+    const [ffOpen, setFfOpen] = useState(currentSeg === 'fulfill');
+    const navFulfill = (target: 'overview' | 'factory') => {
+        const p = new URLSearchParams(location.search);
+        p.delete('day');
+        p.delete('lmx');
+        p.delete('fp');
+        if (target === 'factory') p.set('section', 'factory'); else p.delete('section');
+        navigate({ pathname: '/fulfill', search: p.toString() });
+    };
+
+    // "Order Subs" group: per-factory sent-order screens (/subs/{provider})
+    const isSubsActive = currentSeg === 'subs';
+    const [subsOpen, setSubsOpen] = useState(isSubsActive);
+    const canSeeSubs = role === 'owner' || role === 'leader' || role === 'fulfillment' || permissions.viewFulfill;
+    const SUB_FACTORIES = [
+        { label: 'Lemiex', key: 'lemiex' },
+        { label: 'MangoTee', key: 'mango' },
+        { label: 'Vinaway', key: 'vinaway' },
+        { label: 'MonkeyKing', key: 'monkeyking' },
+        { label: 'Dreamship', key: 'dreamship' },
+        { label: 'HongPhat', key: 'hongphat' },
+        { label: 'Hogoto', key: 'hogoto' },
+    ];
 
 
     // Filter tabs logic (duplicated from App.tsx temporarily, can be refactored)
@@ -43,6 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
             case 'Fulfill': return <TruckIcon className={className} />;
 
             case 'Products': return <TagIcon className={className} />;
+            case 'KPI': return <ChartBarIcon className={className} />;
             default: return <HomeIcon className={className} />;
         }
     };
@@ -92,6 +131,61 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
                         return true;
                     }).map(tab => {
                         const isActive = activeTab === tab;
+                        if (tab === 'Fulfill') {
+                            return (
+                                <li key={tab}>
+                                    <button
+                                        onClick={() => (isCollapsed ? navFulfill('overview') : setFfOpen(o => !o))}
+                                        className={`
+                    w-full flex items-center px-3 py-2.5 rounded-lg transition-colors group relative
+                    ${isActive
+                                                ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+                                            }
+                  `}
+                                        title={isCollapsed ? tab : undefined}
+                                    >
+                                        <div className="flex-shrink-0">{getIconForTab(tab)}</div>
+                                        <span className={`
+                      font-medium text-sm whitespace-nowrap overflow-hidden transition-all duration-300 flex-grow text-left
+                      ${isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[150px] ml-3'}
+                    `}>
+                                            {tab.toUpperCase()}
+                                        </span>
+                                        {!isCollapsed && (
+                                            <ChevronDownIcon className={`h-4 w-4 flex-shrink-0 transition-transform ${ffOpen ? 'rotate-180' : ''}`} />
+                                        )}
+                                        {isCollapsed && (
+                                            <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-lg">
+                                                {role === 'design' && tab === 'Overview' ? 'DESIGN QUEUE' : tab.toUpperCase()}
+                                            </div>
+                                        )}
+                                    </button>
+                                    {!isCollapsed && ffOpen && (
+                                        <ul className="mt-1 space-y-1">
+                                            {([
+                                                { label: 'Dashboard', key: 'overview' },
+                                                { label: 'Supplier', key: 'factory' },
+                                            ] as { label: string; key: 'overview' | 'factory' }[]).map(item => (
+                                                <li key={item.key}>
+                                                    <button
+                                                        onClick={() => navFulfill(item.key)}
+                                                        className={`
+                                                            w-full flex items-center pl-11 pr-3 py-2 rounded-lg transition-colors text-sm font-medium
+                                                            ${isActive && fulfillSub === item.key
+                                                                ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                                                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'}
+                                                        `}
+                                                    >
+                                                        {item.label}
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </li>
+                            );
+                        }
                         return (
                             <li key={tab}>
                                 <button
@@ -120,7 +214,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
                                     {/* Tooltip for collapsed mode */}
                                     {isCollapsed && (
                                         <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-lg">
-                                            {tab.toUpperCase()}
+                                            {role === 'design' && tab === 'Overview' ? 'DESIGN QUEUE' : tab.toUpperCase()}
                                         </div>
                                     )}
                                 </button>
@@ -128,11 +222,129 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
                         );
                     })}
                 </ul>
+
+                {/* ===== Order Subs group (per-factory sent orders) ===== */}
+                {canSeeSubs && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 px-2">
+                        <button
+                            onClick={() => (isCollapsed ? navigate('/subs/lemiex') : setSubsOpen(o => !o))}
+                            className={`
+                                w-full flex items-center px-3 py-2.5 rounded-lg transition-colors group relative
+                                ${isSubsActive
+                                    ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'}
+                            `}
+                            title={isCollapsed ? 'Order Subs' : undefined}
+                        >
+                            <div className="flex-shrink-0">
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                </svg>
+                            </div>
+                            <span className={`
+                                font-medium text-sm whitespace-nowrap overflow-hidden transition-all duration-300 flex-grow text-left
+                                ${isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[150px] ml-3'}
+                            `}>
+                                ORDER SUBS
+                            </span>
+                            {!isCollapsed && (
+                                <ChevronDownIcon className={`h-4 w-4 flex-shrink-0 transition-transform ${subsOpen ? 'rotate-180' : ''}`} />
+                            )}
+                            {isCollapsed && (
+                                <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-lg">
+                                    ORDER SUBS
+                                </div>
+                            )}
+                        </button>
+
+                        {!isCollapsed && subsOpen && (
+                            <ul className="mt-1 space-y-1">
+                                {SUB_FACTORIES.map(item => (
+                                    <li key={item.key}>
+                                        <button
+                                            onClick={() => navigate(`/subs/${item.key}`)}
+                                            className={`
+                                                w-full flex items-center pl-11 pr-3 py-2 rounded-lg transition-colors text-sm font-medium
+                                                ${isSubsActive && currentSub === item.key
+                                                    ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                                                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'}
+                                            `}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )}
+
+                {/* ===== User Management group (owner + leader; leader sees Users only) ===== */}
+                {(role === 'owner' || role === 'leader') && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 px-2">
+                        <button
+                            onClick={() => (isCollapsed ? navigate('/users') : setUmOpen(o => !o))}
+                            className={`
+                                w-full flex items-center px-3 py-2.5 rounded-lg transition-colors group relative
+                                ${isUmActive
+                                    ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'}
+                            `}
+                            title={isCollapsed ? 'User Management' : undefined}
+                        >
+                            <div className="flex-shrink-0">
+                                <UserGroupIcon className="h-5 w-5" />
+                            </div>
+                            <span className={`
+                                font-medium text-sm whitespace-nowrap overflow-hidden transition-all duration-300 flex-grow text-left
+                                ${isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[150px] ml-3'}
+                            `}>
+                                USER MANAGEMENT
+                            </span>
+                            {!isCollapsed && (
+                                <ChevronDownIcon className={`h-4 w-4 flex-shrink-0 transition-transform ${umOpen ? 'rotate-180' : ''}`} />
+                            )}
+                            {isCollapsed && (
+                                <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-lg">
+                                    USER MANAGEMENT
+                                </div>
+                            )}
+                        </button>
+
+                        {/* Sub-menu */}
+                        {!isCollapsed && umOpen && (
+                            <ul className="mt-1 space-y-1">
+                                {([
+                                    { label: 'Users', path: '/users', seg: 'users' },
+                                    ...(role === 'owner' ? [{ label: 'Teams', path: '/teams', seg: 'teams' }] : []),
+                                ] as { label: string; path: string; seg: string }[]).map(item => (
+                                    <li key={item.seg}>
+                                        <button
+                                            onClick={() => navigate(item.path)}
+                                            className={`
+                                                w-full flex items-center pl-11 pr-3 py-2 rounded-lg transition-colors text-sm font-medium
+                                                ${currentSeg === item.seg
+                                                    ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                                                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'}
+                                            `}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )}
             </nav>
 
             <div className={`border-t border-gray-200 dark:border-gray-700 space-y-2 ${isCollapsed ? 'p-2' : 'p-4'}`}>
                 <button
-                    onClick={() => navigate('/products')}
+                    onClick={() => {
+                        const returnPath = `${location.pathname}${location.search}${location.hash}`;
+                        captureProductsReturnState(returnPath);
+                        navigate('/products', { state: { from: returnPath } });
+                    }}
                     className={`
                     w-full flex items-center py-2.5 rounded-lg transition-colors group relative
                     ${isCollapsed ? 'justify-center px-0' : 'px-3'}
@@ -252,4 +464,3 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
 };
 
 export default Sidebar;
-

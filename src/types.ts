@@ -13,6 +13,8 @@ export interface Account {
   scan_start_date?: string; // Ngày bắt đầu của lịch sử email, được tìm thấy bởi giai đoạn dò tìm
   lastKnownHistoryId?: string; // ID cuối cùng mà webhook đã xử lý
   platforms?: string[]; // 'etsy', 'ebay'
+  linkedByUserId?: string | null; // who connected this mailbox
+  linkedByEmail?: string | null;
 }
 
 export interface OrderItem {
@@ -47,6 +49,8 @@ export interface OrderDetails {
     orderTotal: number;
   };
   detectedCurrency?: string;
+  shopName?: string;
+  buyerMessage?: string;
 }
 
 export interface Record {
@@ -58,13 +62,50 @@ export interface Record {
   currency: string | null;
   source: string;
   account: string;
-  kind: 'order' | 'Funds' | 'case' | 'help';
+  kind: 'order' | 'Funds' | 'case' | 'help' | 'message';
   case_msg?: string | null;
   help_kind?: string | null;
   cost_total?: number;
+  design_cost?: number;
   ff_code?: string;
+  order_status?: string; // Fulfillment pipeline: NEW/DESIGNING/READY/PRODUCING/SHIPPED/ON_HOLD/CANCELLED
+  tracking_code?: string;
+  ff_note?: string;
   product_name?: string;
   details?: OrderDetails; // Added detailed info
+  etsy_fees?: EtsyFees; // Imported from the Etsy Sold Orders CSV
+}
+
+// Financials imported from the Etsy "Sold Orders" CSV (per order).
+export interface EtsyFees {
+  orderValue?: number;
+  discount?: number;
+  shippingDiscount?: number;
+  shipping?: number;
+  tax?: number;
+  orderTotal?: number;
+  cardFees?: number;
+  orderNet?: number;
+  currency?: string;
+  sku?: string | null;
+  couponCode?: string | null;
+  saleDate?: string | null;
+  dateShipped?: string | null;
+  numberOfItems?: number | null;
+  importedAt?: string;
+  // Derived at import/backfill time (see api/_lib/etsyNet.ts):
+  shopCurrency?: 'VND' | 'USD';
+  exchangeRate?: number | null; // VND per USD (VND shops)
+  cardFeesUsd?: number;         // processing fee normalized to USD
+  orderNetUsd?: number;         // CSV-style net normalized to USD
+  estBreakdown?: {
+    taxWithheld: number;
+    transactionFee: number;
+    processingFee: number;
+    regulatoryFee: number;
+    vat: number;
+  };
+  estActualNet?: number;        // ≈ Etsy "You earned" for this order
 }
 
 export interface CostData {
@@ -75,7 +116,7 @@ export interface CostData {
   product_name?: string;
 }
 
-export type Tab = 'Overview' | 'Order List' | 'Products' | 'Support' | 'Fulfill';
+export type Tab = 'Overview' | 'Order List' | 'Products' | 'Support' | 'Fulfill' | 'KPI';
 export interface KpiValue {
   value: string;
   change?: number; // e.g., 5.2 for 5.2%
@@ -115,6 +156,18 @@ export interface TopProduct {
   image?: string; // Added image field
 }
 
+// One row of the Overview "Seller Ranking" table.
+export interface SellerRankRow {
+  seller: string;
+  orders: number;
+  items: number; // total item quantity sold
+  revenue: { value: number; display: string };
+  funds?: { value: number; display: string }; // only for owner / viewFunds
+  cost?: number;                               // only for owner / viewFulfill (USD)
+  profit?: number;                             // net minus cost, permission-gated with cost
+  refund?: { count: number; amount: { value: number; display: string } };
+}
+
 export interface ProcessedData {
   overview: {
     table: TableData;
@@ -125,6 +178,7 @@ export interface ProcessedData {
   etsy: TableData;
   cases: TableData;
   help: TableData;
+  messages: TableData; // Etsy buyer conversation notifications
   fulfill: {
     table: TableData;
     merchizeChartData: FulfillChartData[];
@@ -135,6 +189,7 @@ export interface ProcessedData {
     table: TableData;
     chartData: SummaryChartData[];
     topProductsByShop: { [shopName: string]: TopProduct[] };
+    sellerRanking: SellerRankRow[];
   };
   products: TableData; // New field for detailed products table
 }

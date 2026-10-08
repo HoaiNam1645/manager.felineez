@@ -27,6 +27,15 @@ const getIcon = (title: string) => {
       </div>
     );
   }
+  if (t.includes('profit')) {
+    return (
+      <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3h2m-1 0v18m5-14.5c-.75-.65-1.86-1.1-3.2-1.1-2.02 0-3.8 1.02-3.8 2.75 0 1.55 1.38 2.2 3.38 2.72 2.35.62 4.12 1.3 4.12 3.25 0 1.86-1.82 3.08-4.05 3.08-1.56 0-3.14-.47-4.45-1.45" />
+        </svg>
+      </div>
+    );
+  }
   if (t.includes('fund')) {
     return (
       <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">

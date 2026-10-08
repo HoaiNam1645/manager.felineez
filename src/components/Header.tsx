@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDashboard } from '../contexts/DashboardContext';
 import { useUI } from '../contexts/UIContext';
+import { EtsyFees } from '../types';
+import ImportEtsyCsvModal from './ImportEtsyCsvModal';
 
 import { timezones } from '../utils/timezones';
 import ThemeToggle from './ThemeToggle';
@@ -29,6 +31,8 @@ const Header: React.FC = () => {
     teamId, // For NotificationCenter Firestore sync
     allowedAccounts, // For notification filtering by shop
     performGlobalSearch, // Global Search Function
+    setRecords, // For patching etsy_fees after CSV import
+    user,
   } = useDashboard();
 
   const {
@@ -57,11 +61,25 @@ const Header: React.FC = () => {
     role,
     permissions,
     allowedAccounts,
-    email: useDashboard().user?.email // Include email for soft delete
+    email: user?.email // Include email for soft delete
   } : null;
 
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Etsy Sold Orders CSV import (owner + leader, via modal) ---
+  const [isImportCsvOpen, setIsImportCsvOpen] = useState(false);
+
+  const handleCsvImported = useCallback((matchedFees: { [orderId: string]: EtsyFees }) => {
+    // Patch loaded records in place so the order detail modal shows fees immediately.
+    if (Object.keys(matchedFees).length > 0) {
+      setRecords(prev => prev.map(r =>
+        r.kind === 'order' && r.order_id && matchedFees[r.order_id]
+          ? { ...r, etsy_fees: matchedFees[r.order_id] }
+          : r
+      ));
+    }
+  }, [setRecords]);
 
   // Keyboard shortcuts - Combined to prevent duplicate event listeners (memory leak fix)
   useEffect(() => {
@@ -132,7 +150,7 @@ const Header: React.FC = () => {
   }, [sourceFilter, setSourceFilter]);
 
   const cycleSupportFilter = useCallback(() => {
-    const options = ['All', 'Case', 'Help'] as const;
+    const options = ['All', 'Case', 'Help', 'Message'] as const;
     const currentIndex = options.indexOf(supportFilter as any);
     const nextIndex = (currentIndex + 1) % options.length;
     setSupportFilter(options[nextIndex]);
@@ -150,8 +168,8 @@ const Header: React.FC = () => {
             <path d="M4 15L9 9L14 13L20 8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="dark:stroke-gray-900" />
           </svg>
           <h1 className="text-xl font-bold text-gray-800 dark:text-white truncate">
-            <span className="hidden sm:inline">Sales Dashboard</span>
-            <span className="sm:hidden">Dashboard</span>
+            <span className="hidden sm:inline">{role === 'design' ? 'Design Queue' : 'Sales Dashboard'}</span>
+            <span className="sm:hidden">{role === 'design' ? 'Design' : 'Dashboard'}</span>
           </h1>
 
           {/* Activity Indicator (Desktop/Tablet) */}
@@ -245,7 +263,7 @@ const Header: React.FC = () => {
           {/* Support Filter - Only for Support Tab */}
           {activeTab === 'Support' && (
             <div className="flex bg-gray-100 dark:bg-gray-700 rounded-md p-0.5">
-              {(['All', 'Case', 'Help'] as const).map(filter => (
+              {(['All', 'Case', 'Help', 'Message'] as const).map(filter => (
                 <button
                   key={filter}
                   onClick={() => setSupportFilter(filter)}
@@ -296,6 +314,22 @@ const Header: React.FC = () => {
             </button>
           </div>
 
+          {/* Import Etsy CSV Button (owner + leader) — opens the import modal */}
+          {(role === 'owner' || role === 'leader') && (
+            <div className="relative">
+              <button
+                onClick={() => setIsImportCsvOpen(true)}
+                className={`text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors flex items-center justify-center ${isSidebarCollapsed ? 'px-3 py-1.5' : 'p-2'}`}
+                title="Import Etsy CSV (Sold Orders)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                <span className={`${isSidebarCollapsed ? 'block' : 'hidden'} ml-2 text-sm font-medium`}>Import</span>
+              </button>
+            </div>
+          )}
+
         </div>
 
         {/* Right: Mobile Menu Toggle & Theme */}
@@ -320,7 +354,7 @@ const Header: React.FC = () => {
 
           {activeTab === 'Support' && (
             <div className="flex mr-1 bg-gray-100 dark:bg-gray-700 rounded-md p-0.5 border border-gray-200 dark:border-gray-600">
-              {(['All', 'Case', 'Help'] as const).map(filter => (
+              {(['All', 'Case', 'Help', 'Message'] as const).map(filter => (
                 <button
                   key={filter}
                   onClick={() => setSupportFilter(filter)}
@@ -398,7 +432,7 @@ const Header: React.FC = () => {
               <div className="w-full">
                 <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-wider">Filter</label>
                 <div className="flex bg-gray-50 dark:bg-gray-700/50 rounded-lg p-1 border border-gray-200 dark:border-gray-600">
-                  {(['All', 'Case', 'Help'] as const).map(filter => (
+                  {(['All', 'Case', 'Help', 'Message'] as const).map(filter => (
                     <button
                       key={filter}
                       onClick={() => setSupportFilter(filter)}
@@ -481,6 +515,14 @@ const Header: React.FC = () => {
         onClose={() => setShowExportOptions(false)}
         onExport={handleExportWithOptions}
       />
+
+      {/* Import Etsy CSV Modal */}
+      {isImportCsvOpen && (
+        <ImportEtsyCsvModal
+          onClose={() => setIsImportCsvOpen(false)}
+          onImported={handleCsvImported}
+        />
+      )}
     </header >
   );
 };

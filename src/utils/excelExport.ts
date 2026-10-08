@@ -154,6 +154,8 @@ const cleanCellData = (cell: any): string | number | null => {
         }
         if (cell.type === 'button') return decodeHTMLEntities(cell.label || '');
         if (cell.type === 'action_group') return '';
+        if (cell.type === 'items') return decodeHTMLEntities(cell.name || '');
+        if (cell.type === 'ordernote' || cell.type === 'ffnote') return decodeHTMLEntities(cell.value || '');
         // Fallback for other objects
         return JSON.stringify(cell);
     }
@@ -188,7 +190,7 @@ const remapTableDataForOrders = (originalData: TableData): TableData => {
         else if (lowerH.includes('currency')) headerMapping['Currency'] = index;
         else if (lowerH.includes('cost')) headerMapping['Cost'] = index;
         else if (lowerH.includes('ff code') || lowerH.includes('fulfillment')) headerMapping['FF Code'] = index;
-        else if (lowerH.includes('case')) headerMapping['Case'] = index;
+        else if (lowerH.includes('case') || lowerH === 'support') headerMapping['Case'] = index;
         else if (lowerH.includes('help')) headerMapping['Help'] = index;
         else if (lowerH.includes('account') || lowerH.includes('shop')) headerMapping['Account'] = index;
         else if (lowerH.includes('date') || lowerH.includes('time')) headerMapping['Datetime'] = index;
@@ -198,9 +200,17 @@ const remapTableDataForOrders = (originalData: TableData): TableData => {
     // 2. Construct new rows
     const newRows = originalData.rows.map(row => {
         return REQUIRED_ORDER_HEADERS.map(header => {
-            const index = headerMapping[header];
+            let index = headerMapping[header];
+            // Case/Help now live inside the merged Support cell
+            if ((header === 'Case' || header === 'Help') && (index === undefined || index < 0)) {
+                index = headerMapping['Case'];
+            }
             if (index !== undefined && index >= 0) {
-                return row[index];
+                const cell: any = row[index];
+                if (cell && typeof cell === 'object' && cell.type === 'support') {
+                    return header === 'Help' ? cell.help : cell.case;
+                }
+                return cell;
             }
             return ''; // Default empty if not found
         });

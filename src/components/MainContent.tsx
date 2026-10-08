@@ -14,6 +14,8 @@ import ProductsTab from './tabs/ProductsTab';
 import OrderListTab from './tabs/OrderListTab';
 import FulfillTab from './tabs/FulfillTab';
 import SupportTab from './tabs/SupportTab';
+import KpiTab from './tabs/KpiTab';
+import DesignQueueTab from './DesignQueueTab';
 
 // Helper for lazy data tables
 const LazyTable = ({ headers, data }: { headers: string[], data: any[] }) => (
@@ -29,10 +31,13 @@ const LazyTable = ({ headers, data }: { headers: string[], data: any[] }) => (
 interface MainContentProps {
     onViewOrderDetails: (recordId: string) => void;
     onResyncOrder: (recordId: string) => Promise<void>;
+    onChangeOrderStatus: (recordId: string, status: string) => Promise<void>;
+    onSaveTracking: (recordId: string, tracking: string) => Promise<void>;
+    onSaveFfNote: (recordId: string, note: string) => Promise<void>;
 }
 
-const MainContent: React.FC<MainContentProps> = ({ onViewOrderDetails, onResyncOrder }) => {
-    const { isLoading, records, processedData, isProcessing } = useDashboard();
+const MainContent: React.FC<MainContentProps> = ({ onViewOrderDetails, onResyncOrder, onChangeOrderStatus, onSaveTracking, onSaveFfNote }) => {
+    const { isLoading, records, processedData, isProcessing, role } = useDashboard();
     const {
         activeTab,
         filterDateRange,
@@ -71,6 +76,17 @@ const MainContent: React.FC<MainContentProps> = ({ onViewOrderDetails, onResyncO
         const content = (() => {
             switch (activeTab) {
                 case 'Overview':
+                    if (role === 'design') {
+                        return (
+                            <ErrorBoundary>
+                                <DesignQueueTab
+                                    records={records}
+                                    timeZone={timeZone}
+                                    onViewOrderDetails={onViewOrderDetails}
+                                />
+                            </ErrorBoundary>
+                        );
+                    }
                     const isSingleDay = filterDateRange.from === filterDateRange.to;
                     return (
                         <ErrorBoundary>
@@ -96,6 +112,9 @@ const MainContent: React.FC<MainContentProps> = ({ onViewOrderDetails, onResyncO
                             timeZone={timeZone}
                             handleViewOrderDetails={onViewOrderDetails}
                             handleResyncOrder={onResyncOrder}
+                            handleChangeOrderStatus={onChangeOrderStatus}
+                            handleSaveTracking={onSaveTracking}
+                            handleSaveFfNote={onSaveFfNote}
                             allRecords={records}
                         />
                     );
@@ -105,6 +124,13 @@ const MainContent: React.FC<MainContentProps> = ({ onViewOrderDetails, onResyncO
 
                 case 'Fulfill':
                     return <FulfillTab processedData={processedData} />;
+
+                case 'KPI':
+                    return (
+                        <ErrorBoundary>
+                            <KpiTab />
+                        </ErrorBoundary>
+                    );
 
                 default:
                     return <div className="p-8 text-center text-gray-500">Selected tab content not available.</div>;

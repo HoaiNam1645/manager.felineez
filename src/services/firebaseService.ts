@@ -57,6 +57,8 @@ function mapAccount(raw: any): Account {
     scan_start_date: raw.scanStartDate ?? undefined,
     lastKnownHistoryId: raw.lastKnownHistoryId ?? undefined,
     platforms: raw.platforms ?? undefined,
+    linkedByUserId: raw.linkedByUserId ?? undefined,
+    linkedByEmail: raw.linkedByEmail ?? undefined,
   };
 }
 
@@ -76,7 +78,7 @@ function accountToApi(a: Partial<Account>) {
   };
 }
 
-function mapRecord(raw: any): Record {
+export function mapRecord(raw: any): Record {
   return {
     id: raw.id,
     email_id: raw.emailId ?? undefined,
@@ -88,15 +90,28 @@ function mapRecord(raw: any): Record {
     account: raw.accountEmail ?? '',
     kind: (String(raw.kind).toLowerCase() === 'funds'
       ? 'Funds'
-      : (String(raw.kind).toLowerCase() as 'order' | 'case' | 'help')) as Record['kind'],
+      : (String(raw.kind).toLowerCase() as 'order' | 'case' | 'help' | 'message')) as Record['kind'],
     case_msg: raw.caseMsg ?? null,
     help_kind: raw.helpKind ?? null,
     cost_total: raw.costTotal != null ? Number(raw.costTotal) : undefined,
+    design_cost: raw.designCost != null ? Number(raw.designCost) : undefined,
     ff_code: raw.ffCode ?? undefined,
+    order_status: raw.orderStatus ?? undefined,
+    tracking_code: raw.trackingCode ?? undefined,
+    ff_note: raw.ffNote ?? undefined,
     product_name: raw.productName ?? undefined,
     details: raw.details ?? undefined,
+    etsy_fees: raw.etsyFees ?? undefined,
   };
 }
+
+export const createManualOrderRecord = async (record: Partial<Record>): Promise<Record> => {
+  const { records } = await api.post<{ upserted: number; records: any[] }>('/api/records', {
+    records: [record],
+  });
+  if (!records?.[0]) throw new Error('Order was created but no record returned');
+  return mapRecord(records[0]);
+};
 
 // --- Accounts -------------------------------------------------------------
 
@@ -201,6 +216,7 @@ export const updateRecordsInFirebase = async (
         currency: r.currency,
         order_id: r.order_id,
         cost_total: r.cost_total,
+        design_cost: r.design_cost,
         ff_code: r.ff_code,
         product_name: r.product_name,
         details: r.details,
@@ -212,13 +228,71 @@ export const updateRecordsInFirebase = async (
   );
 };
 
+export const updateOrderStatus = async (recordId: string, status: string): Promise<void> => {
+  await api.patch(`/api/records/${recordId}`, { order_status: status });
+};
+
+export const updateOrderFields = async (recordId: string, fields: { [k: string]: any }): Promise<void> => {
+  await api.patch(`/api/records/${recordId}`, fields);
+};
+
+export const updateFfNote = async (recordId: string, note: string): Promise<void> => {
+  await api.patch(`/api/records/${recordId}`, { ff_note: note.trim() || null });
+};
+
+export const updateTrackingCode = async (recordId: string, tracking: string): Promise<void> => {
+  await api.patch(`/api/records/${recordId}`, { tracking_code: tracking.trim() || null });
+};
+
+// Latest orders regardless of the dashboard's date filter (Lemiex order picker
+// must show fulfillable orders even when the current range has none).
+export const getRecentOrderRecords = async (limit = 100): Promise<Record[]> => {
+  const { records } = await api.get<{ records: any[] }>(`/api/records?kind=order&limit=${limit}`);
+  return records.map(mapRecord);
+};
+
+export const getRecordById = async (id: string): Promise<Record | null> => {
+  try {
+    const { record } = await api.get<{ record: any }>(`/api/records/${id}`);
+    return mapRecord(record);
+  } catch {
+    return null;
+  }
+};
+
+// dtLocal is stored as an absolute UTC instant. The filter range arrives as
+// date-only strings ("2026-07-21"), which the API would parse as midnight UTC
+// for BOTH bounds — making from==to (the default "Today") match nothing and
+// multi-day ranges drop the last day. Convert each bound to the start/end of
+// that day in the viewer's time zone before querying.
+const offsetForDay = (dateStr: string, tz: string): string => {
+  try {
+    const probe = new Date(`${dateStr}T12:00:00Z`);
+    const name = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' })
+      .formatToParts(probe)
+      .find((p) => p.type === 'timeZoneName')?.value || 'GMT';
+    const m = name.match(/GMT([+-]\d{2}:\d{2})/);
+    return m ? m[1] : '+00:00';
+  } catch {
+    return '+00:00';
+  }
+};
+
+const dayBound = (d: string, tz: string, end: boolean): string =>
+  /^\d{4}-\d{2}-\d{2}$/.test(d)
+    ? `${d}T${end ? '23:59:59.999' : '00:00:00.000'}${offsetForDay(d, tz)}`
+    : d;
+
 export const getRecordsForDateRange = async (
   _teamId: string,
   startDate: string,
   endDate: string,
-  _timeZone: string
+  timeZone: string
 ): Promise<Record[]> => {
-  const qs = new URLSearchParams({ from: startDate, to: endDate });
+  const qs = new URLSearchParams({
+    from: dayBound(startDate, timeZone, false),
+    to: dayBound(endDate, timeZone, true),
+  });
   const { records } = await api.get<{ records: any[] }>(`/api/records?${qs.toString()}`);
   return records.map(mapRecord);
 };

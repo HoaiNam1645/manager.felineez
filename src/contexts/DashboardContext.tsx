@@ -21,7 +21,7 @@ interface DashboardContextType {
   // Auth & Permissions
   user: User;
   teamId: string;
-  role: 'owner' | 'user';
+  role: 'owner' | 'leader' | 'user' | 'fulfillment' | 'design';
   permissions: { [key: string]: boolean };
   allowedAccounts?: string[]; // For shop-level access control
 
@@ -74,7 +74,7 @@ interface DashboardProviderProps {
   children: React.ReactNode;
   user: User;
   teamId: string;
-  role: 'owner' | 'user';
+  role: 'owner' | 'leader' | 'user' | 'fulfillment' | 'design';
   permissions: { [key: string]: boolean };
   allowedAccounts?: string[];
   // We pass auth logic from outside (App.tsx) or we could just use the hook here if we didn't need to conditionally render the provider.
@@ -233,6 +233,7 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
     etsy: { headers: [], rows: [] },
     cases: { headers: [], rows: [] },
     help: { headers: [], rows: [] },
+    messages: { headers: [], rows: [] },
     fulfill: { table: { headers: [], rows: [] }, merchizeChartData: [], printwayChartData: [] },
     summary: { kpis: {}, table: { headers: [], rows: [] }, chartData: [], topProductsByShop: {} },
     products: { headers: [], rows: [] }
@@ -304,7 +305,8 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
     records,
     accounts: stableProcessingAccountsRef.current as Account[], // Cast as full Account[] assuming filtering uses only stable IDs
     selectedAccountId,
-    searchTerm
+    searchTerm,
+    bypassAccountFilter: role === 'fulfillment' || role === 'design'
   });
 
   // Track the last trigger state for worker to prevent redundant runs

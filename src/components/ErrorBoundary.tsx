@@ -34,6 +34,18 @@ class ErrorBoundary extends Component<Props, State> {
         // Log error details for debugging
         console.error('Error Boundary caught an error:', error, errorInfo);
 
+        fetch('/api/client-errors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: error?.message || String(error),
+                stack: error?.stack || '',
+                componentStack: errorInfo?.componentStack || '',
+                url: window.location.href,
+                userAgent: navigator.userAgent,
+            }),
+        }).catch(() => undefined);
+
         // You can also log the error to an error reporting service here
         // logErrorToService(error, errorInfo);
 

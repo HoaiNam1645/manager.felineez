@@ -2,18 +2,30 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { prisma } from '../_lib/prisma.js';
 import { requireAuth } from '../_lib/auth.js';
 import { badRequest, methodNotAllowed, parseDate, serverError } from '../_lib/helpers.js';
+import { triggerSyncSafe } from '../_lib/exportSync.js';
+import { triggerTelegramNotificationsSafe } from '../_lib/telegramHelper.js';
+import { visibleAccountEmails } from '../_lib/teamScope.js';
 
-const KIND_MAP: Record<string, 'ORDER' | 'FUNDS' | 'CASE' | 'HELP'> = {
+const KIND_MAP: Record<string, 'ORDER' | 'FUNDS' | 'CASE' | 'HELP' | 'MESSAGE'> = {
   order: 'ORDER',
   Funds: 'FUNDS',
   funds: 'FUNDS',
   case: 'CASE',
   help: 'HELP',
+  message: 'MESSAGE',
 };
 
-function toEnum(kind: unknown): 'ORDER' | 'FUNDS' | 'CASE' | 'HELP' | null {
+function toEnum(kind: unknown): 'ORDER' | 'FUNDS' | 'CASE' | 'HELP' | 'MESSAGE' | null {
   if (typeof kind !== 'string') return null;
   return KIND_MAP[kind] ?? null;
+}
+
+function isRecentForTelegram(record: any): boolean {
+  const maxHours = Math.max(Number(process.env.TELEGRAM_NOTIFY_MAX_RECORD_AGE_HOURS || 6), 0);
+  if (!maxHours) return true;
+  const ts = new Date(record?.dtLocal || record?.dt_local || 0).getTime();
+  if (!Number.isFinite(ts)) return false;
+  return Date.now() - ts <= maxHours * 60 * 60 * 1000;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -25,6 +37,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { from, to, accountId, kind, q, limit = '5000', cursor } = req.query as Record<string, string>;
 
       const where: any = { teamId: auth.teamId };
+
+      // Server-side visibility: non-owners only see records of shops they can
+      // access (leader = team's shops, user = own/allowed shops).
+      const visibleEmails = await visibleAccountEmails(auth);
+      if (visibleEmails) where.accountEmail = { in: visibleEmails };
       const fromDate = parseDate(from);
       const toDate = parseDate(to);
       if (fromDate || toDate) {
@@ -59,6 +76,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    if (req.method === 'PATCH') {
+      const { ids, items, sku } = req.body || {};
+      const itemUpdates = Array.isArray(items)
+        ? items
+          .filter((item: any) => typeof item?.recordId === 'string' && Number.isInteger(item?.itemIndex) && item.itemIndex >= 0)
+          .map((item: any) => ({ recordId: item.recordId.trim(), itemIndex: item.itemIndex }))
+        : [];
+      if (typeof sku !== 'string') return badRequest(res, 'invalid sku');
+
+      const cleanIds = itemUpdates.length > 0
+        ? Array.from(new Set(itemUpdates.map((item) => item.recordId).filter(Boolean)))
+        : Array.from(new Set((Array.isArray(ids) ? ids : []).filter((id: unknown) => typeof id === 'string' && id.trim()).map((id: string) => id.trim())));
+      if (cleanIds.length === 0) return badRequest(res, 'ids or items array is required');
+      if (cleanIds.length > 500) return badRequest(res, 'max 500 records per request');
+      if (itemUpdates.length > 1000) return badRequest(res, 'max 1000 items per request');
+
+      const cleanSku = sku.trim().slice(0, 190);
+      if (!cleanSku) return badRequest(res, 'sku is required');
+
+      const where: any = { teamId: auth.teamId, kind: 'ORDER', id: { in: cleanIds } };
+      const visibleEmails = await visibleAccountEmails(auth);
+      if (visibleEmails) where.accountEmail = { in: visibleEmails };
+
+      const records = await prisma.record.findMany({
+        where,
+        select: { id: true, details: true, etsyFees: true },
+      });
+
+      let updatedItems = 0;
+      for (const record of records) {
+        const fees = record.etsyFees && typeof record.etsyFees === 'object' && !Array.isArray(record.etsyFees)
+          ? (record.etsyFees as any)
+          : {};
+        const data: any = {};
+
+        if (itemUpdates.length > 0) {
+          const indexes = itemUpdates
+            .filter((item) => item.recordId === record.id)
+            .map((item) => item.itemIndex);
+          const details = record.details && typeof record.details === 'object' && !Array.isArray(record.details)
+            ? structuredClone(record.details as any)
+            : null;
+          if (!details || !Array.isArray(details.items)) continue;
+          const uniqueIndexes = Array.from(new Set(indexes));
+          uniqueIndexes.forEach((index) => {
+            if (details.items[index] && typeof details.items[index] === 'object') {
+              details.items[index] = { ...details.items[index], sku: cleanSku };
+              updatedItems++;
+            }
+          });
+          if (uniqueIndexes.length === 0) continue;
+          data.details = details;
+          if (details.items.length === 1) data.etsyFees = { ...fees, sku: cleanSku };
+        } else {
+          data.etsyFees = { ...fees, sku: cleanSku };
+        }
+
+        await prisma.record.update({
+          where: { id: record.id },
+          data,
+        });
+      }
+
+      return res.status(200).json({ updated: records.length, updatedItems, sku: cleanSku });
+    }
+
     if (req.method === 'POST') {
       // Bulk upsert from sync workers
       const { records } = req.body || {};
@@ -78,9 +161,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       let upserted = 0;
+      const savedRecords: any[] = [];
+      const existingEmailIds = new Set<string>();
+      const incomingEmailIds = dedupedRecords
+        .map((r: any) => r.email_id ?? r.emailId ?? null)
+        .filter((emailId: unknown): emailId is string => typeof emailId === 'string' && !!emailId);
+      if (incomingEmailIds.length > 0) {
+        const existingRecords = await prisma.record.findMany({
+          where: { teamId: auth.teamId, emailId: { in: incomingEmailIds } },
+          select: { emailId: true },
+        });
+        existingRecords.forEach((r) => { if (r.emailId) existingEmailIds.add(r.emailId); });
+      }
+      const newlyCreatedRecords: any[] = [];
       for (const r of dedupedRecords) {
         const kindEnum = toEnum(r.kind) ?? 'ORDER';
         const emailId = r.email_id ?? r.emailId ?? null;
+        const wasExisting = emailId ? existingEmailIds.has(emailId) : true;
         const fields = {
           dtLocal: parseDate(r.dt_local || r.dtLocal) ?? new Date(),
           amount: r.amount ?? 0,
@@ -93,27 +190,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           caseMsg: r.case_msg ?? r.caseMsg ?? null,
           helpKind: r.help_kind ?? r.helpKind ?? null,
           costTotal: r.cost_total ?? r.costTotal ?? null,
+          designCost: r.design_cost ?? r.designCost ?? null,
           ffCode: r.ff_code ?? r.ffCode ?? null,
           productName: r.product_name ?? r.productName ?? null,
           details: r.details ?? undefined,
         };
         try {
-          await prisma.record.upsert({
+          const saved = await prisma.record.upsert({
             where: emailId
               ? { teamId_emailId: { teamId: auth.teamId, emailId } }
               : { id: r.id || '__never__' },
             update: fields,
-            create: { teamId: auth.teamId, emailId, ...fields },
+            create: {
+              teamId: auth.teamId,
+              emailId,
+              ...fields,
+              // New orders start the fulfillment pipeline; a manual status is
+              // never overwritten because `update` doesn't touch orderStatus.
+              orderStatus: kindEnum === 'ORDER' ? 'NEW' : null,
+            },
           });
+          savedRecords.push(saved);
+          if (!wasExisting) newlyCreatedRecords.push(saved);
         } catch (e: any) {
           // P2002 = unique constraint race: a concurrent sync request inserted
           // this (teamId, emailId) between our SELECT and INSERT. Fall back to
           // an update so the batch still succeeds.
           if (e?.code === 'P2002' && emailId) {
-            await prisma.record.update({
+            const saved = await prisma.record.update({
               where: { teamId_emailId: { teamId: auth.teamId, emailId } },
               data: fields,
             });
+            savedRecords.push(saved);
           } else {
             throw e;
           }
@@ -121,10 +229,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         upserted++;
       }
 
-      return res.status(200).json({ upserted });
+      // Auto-advance to PRODUCING once a fulfillment code arrives, but only
+      // from pre-production statuses (never off SHIPPED/ON_HOLD/CANCELLED).
+      const producingIds = savedRecords
+        .filter(
+          (s) =>
+            s.kind === 'ORDER' &&
+            s.ffCode &&
+            ['NEW', 'DESIGNING', 'READY', null].includes(s.orderStatus ?? null)
+        )
+        .map((s) => s.id);
+      if (producingIds.length > 0) {
+        await prisma.record.updateMany({
+          where: { id: { in: producingIds } },
+          data: { orderStatus: 'PRODUCING' },
+        });
+      }
+
+      // Real-time outbound sync: push freshly-upserted Etsy orders to feline.
+      triggerSyncSafe(savedRecords);
+      triggerTelegramNotificationsSafe(newlyCreatedRecords.filter(isRecentForTelegram));
+
+      return res.status(200).json({ upserted, records: savedRecords });
     }
 
-    return methodNotAllowed(res, ['GET', 'POST']);
+    return methodNotAllowed(res, ['GET', 'PATCH', 'POST']);
   } catch (err) {
     return serverError(res, err);
   }

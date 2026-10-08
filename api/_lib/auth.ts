@@ -12,7 +12,7 @@ if (!JWT_SECRET) {
 export interface AuthTokenPayload {
   userId: string;
   teamId: string;
-  role: 'OWNER' | 'USER';
+  role: 'OWNER' | 'LEADER' | 'USER' | 'FULFILLMENT' | 'DESIGN';
   email: string;
 }
 

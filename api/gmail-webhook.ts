@@ -19,8 +19,10 @@ import { prisma } from './_lib/prisma.js';
 import { getAccessTokenFromRefreshToken } from './_lib/googleAuthHelper.js';
 import { parseMessage, RULES } from '../src/services/rules.js';
 import { getHtmlFromGmailPayload, getPlainTextFromGmailPayload } from './_lib/gmailHelper.js';
+import { triggerSyncSafe } from './_lib/exportSync.js';
+import { triggerTelegramNotificationsSafe } from './_lib/telegramHelper.js';
 
-type NotificationEvent = { type: 'order' | 'funds'; text: string };
+type NotificationEvent = { type: 'order' | 'funds' | 'message'; text: string };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -166,10 +168,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 ? 'FUNDS'
                 : parsedData.kind === 'case'
                 ? 'CASE'
+                : parsedData.kind === 'message'
+                ? 'MESSAGE'
                 : 'HELP',
             caseMsg: parsedData.case_msg ?? null,
             helpKind: parsedData.help_kind ?? null,
             costTotal: parsedData.cost_total ?? null,
+            designCost: parsedData.design_cost ?? null,
             ffCode: parsedData.ff_code ?? null,
             productName: parsedData.product_name ?? null,
             details: (parsedData as any).details ?? null,
@@ -184,6 +189,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             notificationEvents.push({
               type: 'funds',
               text: `Funds Received: $${parsedData.amount} ${parsedData.currency || ''} (${shopName})`,
+            });
+          } else if (parsedData.kind === 'message') {
+            notificationEvents.push({
+              type: 'message',
+              text: `${parsedData.case_msg || 'Buyer sent you a message'}${parsedData.order_id ? ` (Order #${parsedData.order_id})` : ''} (${shopName})`,
             });
           }
           break;
@@ -205,11 +215,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const dedupedRecords = Array.from(recordsByEmailId.values());
 
+    const savedRecords: any[] = [];
+    const existingEmailIds = new Set<string>();
     if (dedupedRecords.length > 0) {
+      const existingRecords = await prisma.record.findMany({
+        where: { teamId, emailId: { in: dedupedRecords.map((r) => r.emailId) } },
+        select: { emailId: true },
+      });
+      existingRecords.forEach((r) => { if (r.emailId) existingEmailIds.add(r.emailId); });
+
       // Sequential (not Promise.all) so each upsert's SELECT-then-INSERT can't
       // race a sibling inserting the same key.
       for (const r of dedupedRecords) {
-        await prisma.record.upsert({
+        const wasExisting = existingEmailIds.has(r.emailId);
+        const saved = await prisma.record.upsert({
           where: { teamId_emailId: { teamId, emailId: r.emailId } },
           update: {
             dtLocal: r.dtLocal,
@@ -223,6 +242,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             caseMsg: r.caseMsg,
             helpKind: r.helpKind,
             costTotal: r.costTotal,
+            designCost: r.designCost,
             ffCode: r.ffCode,
             productName: r.productName,
             details: r.details,
@@ -231,11 +251,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             teamId,
             accountId: account.id,
             ...r,
+            // New orders enter the fulfillment pipeline; existing records keep
+            // their status because `update` doesn't touch orderStatus.
+            orderStatus: r.kind === 'ORDER' ? 'NEW' : null,
           },
         });
+        savedRecords.push(saved);
+        if (!wasExisting) existingEmailIds.delete(r.emailId);
       }
       console.log(`[gmail-webhook] Persisted ${dedupedRecords.length} records for ${userEmail}`);
     }
+    const newlyCreatedRecords = savedRecords.filter((r) => r.emailId && !existingEmailIds.has(r.emailId));
+
+    // Real-time outbound sync: push freshly-saved Etsy orders to feline
+    // (fire-and-forget; failures stay PENDING/FAILED for the cron to retry).
+    triggerSyncSafe(savedRecords);
+    triggerTelegramNotificationsSafe(newlyCreatedRecords);
 
     // 5. Advance the history cursor
     await prisma.mailAccount.update({
@@ -248,18 +279,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
       const orders = notificationEvents.filter((e) => e.type === 'order');
       const funds = notificationEvents.filter((e) => e.type === 'funds');
+      const messages = notificationEvents.filter((e) => e.type === 'message');
 
       if (notificationEvents.length === 1) {
         const evt = notificationEvents[0];
         await prisma.notification.create({
           data: {
             teamId,
-            type: evt.type === 'order' ? 'NEW_ORDER' : 'FUND',
-            title: evt.type === 'order' ? 'New Order!' : 'Funds Received!',
+            type: evt.type === 'order' ? 'NEW_ORDER' : evt.type === 'message' ? 'CASE_HELP' : 'FUND',
+            title: evt.type === 'order' ? 'New Order!' : evt.type === 'message' ? 'New Message' : 'Funds Received!',
             body: evt.text,
             data: {
               url:
-                evt.type === 'order' ? `${appUrl}/?tab=Order+List` : `${appUrl}/?tab=Overview`,
+                evt.type === 'order'
+                  ? `${appUrl}/?tab=Order+List`
+                  : evt.type === 'message'
+                  ? `${appUrl}/support?support=Message`
+                  : `${appUrl}/?tab=Overview`,
             } as any,
           },
         });
@@ -283,6 +319,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               title: 'New Funds Received',
               body: `You have ${funds.length} new payout updates.`,
               data: { url: `${appUrl}/?tab=Overview`, count: funds.length } as any,
+            },
+          });
+        }
+        if (messages.length > 0) {
+          await prisma.notification.create({
+            data: {
+              teamId,
+              type: 'CASE_HELP',
+              title: messages.length === 1 ? 'New Message' : 'New Messages',
+              body: messages.length === 1 ? messages[0].text : `You have ${messages.length} new buyer messages.`,
+              data: { url: `${appUrl}/support?support=Message`, count: messages.length } as any,
             },
           });
         }

@@ -6,7 +6,6 @@ import { useDashboard } from '../contexts/DashboardContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 
-import UserManager from './UserManager';
 import ManualCostManager from './ManualCostManager';
 import NotificationSettings from './NotificationSettings';
 import Spinner from './Spinner';
@@ -356,6 +355,11 @@ const MailManager: React.FC = () => {
                       placeholder="Enter Shop Name"
                     />
                     <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 px-1 truncate">{acc.email}</p>
+                    {acc.linkedByEmail && (
+                      <p className="text-[11px] text-gray-400 dark:text-gray-500 px-1 truncate">
+                        Linked by {acc.linkedByEmail}
+                      </p>
+                    )}
 
                     {/* Platform Toggles */}
                     <div className="flex items-center gap-3 px-1 mt-1">
@@ -484,7 +488,7 @@ const AccountManager: React.FC = () => {
   const canManageMail = role === 'owner' || permissions.canManageSettings;
   const defaultTab = canManageMail ? 'mail' : 'notifications';
 
-  const [activeTab, setActiveTab] = useState<'mail' | 'users' | 'costs' | 'notifications'>(defaultTab);
+  const [activeTab, setActiveTab] = useState<'mail' | 'costs' | 'notifications'>(defaultTab);
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Chỉ đóng nếu click trực tiếp vào backdrop (không phải con của nó)
     if (e.target === e.currentTarget) {
@@ -527,27 +531,18 @@ const AccountManager: React.FC = () => {
             Notifications
           </button>
           {role === 'owner' && (
-            <>
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`flex-1 py-2 md:py-3 px-2 md:px-4 font-semibold text-center transition-colors whitespace-nowrap text-sm md:text-base ${activeTab === 'users' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-              >
-                User Management
-              </button>
-              <button
-                onClick={() => setActiveTab('costs')}
-                className={`flex-1 py-2 md:py-3 px-2 md:px-4 font-semibold text-center transition-colors whitespace-nowrap text-sm md:text-base ${activeTab === 'costs' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-              >
-                Manual Costs
-              </button>
-            </>
+            <button
+              onClick={() => setActiveTab('costs')}
+              className={`flex-1 py-2 md:py-3 px-2 md:px-4 font-semibold text-center transition-colors whitespace-nowrap text-sm md:text-base ${activeTab === 'costs' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+            >
+              Manual Costs
+            </button>
           )}
         </div>
 
         {/* Content */}
         <div className="p-3 md:p-6 flex-grow flex flex-col overflow-hidden bg-white dark:bg-gray-800">
           {activeTab === 'mail' && <MailManager />}
-          {activeTab === 'users' && <UserManager />}
           {activeTab === 'costs' && <ManualCostManager />}
           {activeTab === 'notifications' && <NotificationSettings />}
         </div>

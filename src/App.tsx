@@ -6,10 +6,12 @@ import { useAuthLogic } from './hooks/useAuthLogic';
 import { NotificationProvider, useNotification } from './contexts/NotificationContext';
 import { Record } from './types';
 import { reprocessRecord } from './services/emailService';
+import { updateOrderStatus, updateTrackingCode, updateFfNote } from './services/firebaseService';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
 import { triggerHaptic } from './utils/haptics';
 import { getPermittedTabs } from './utils/permissions';
 import { UIProvider, useUI } from './contexts/UIContext';
+import { useLocation } from 'react-router-dom';
 import SidebarSkeleton from './components/SidebarSkeleton';
 import Spinner from './components/Spinner';
 import { DeepLinkHandler } from './components/DeepLinkHandler';
@@ -21,6 +23,8 @@ import AccountManager from './components/AccountManager';
 import OrderDetailModal from './components/OrderDetailModal';
 import TabSettings from './components/TabSettings';
 import ProductManager from './components/ProductManager';
+import UserManagementPage from './components/UserManagementPage';
+import OrderSubsPage from './components/subs/OrderSubsPage';
 import BottomNav from './components/BottomNav';
 import InstallPrompt from './components/InstallPrompt';
 
@@ -43,6 +47,10 @@ const DashboardLayout: React.FC = () => {
         permissions,
         isProcessing,
     } = useDashboard();
+
+    // /subs/* renders inside the admin layout (same chrome as the other tabs)
+    const location = useLocation();
+    const isSubsRoute = location.pathname.split('/').filter(Boolean)[0] === 'subs';
 
     const { addNotification } = useNotification();
 
@@ -139,6 +147,42 @@ const DashboardLayout: React.FC = () => {
         }
     }, [records, accounts, teamId, setRecords, addNotification]);
 
+    const handleChangeOrderStatus = useCallback(async (recordId: string, status: string) => {
+        try {
+            await updateOrderStatus(recordId, status);
+            setRecords(prev => prev.map(r => r.id === recordId ? { ...r, order_status: status } : r));
+            setSelectedOrder(prev => (prev && prev.id === recordId) ? { ...prev, order_status: status } : prev);
+        } catch (error) {
+            console.error(error);
+            addNotification('Failed to update order status.', 'error');
+        }
+    }, [setRecords, addNotification]);
+
+    const handleSaveTracking = useCallback(async (recordId: string, tracking: string) => {
+        try {
+            await updateTrackingCode(recordId, tracking);
+            const value = tracking.trim() || undefined;
+            setRecords(prev => prev.map(r => r.id === recordId ? { ...r, tracking_code: value } : r));
+            setSelectedOrder(prev => (prev && prev.id === recordId) ? { ...prev, tracking_code: value } : prev);
+        } catch (error) {
+            console.error(error);
+            addNotification('Failed to save tracking.', 'error');
+            throw error;
+        }
+    }, [setRecords, addNotification]);
+
+    const handleSaveFfNote = useCallback(async (recordId: string, note: string) => {
+        try {
+            await updateFfNote(recordId, note);
+            const value = note.trim() || undefined;
+            setRecords(prev => prev.map(r => r.id === recordId ? { ...r, ff_note: value } : r));
+        } catch (error) {
+            console.error(error);
+            addNotification('Failed to save note.', 'error');
+            throw error;
+        }
+    }, [setRecords, addNotification]);
+
     const closeOrderDetail = useCallback(() => setSelectedOrder(null), []);
 
     const handleOpenOrderById = useCallback((orderId: string) => {
@@ -148,7 +192,8 @@ const DashboardLayout: React.FC = () => {
         if (record) {
             handleViewOrderDetails(record.id);
         } else {
-            addNotification(`Order #${orderId} not found in current date range`, 'error');
+            const label = /^\d+$/.test(orderId) ? `Order #${orderId}` : 'Order';
+            addNotification(`${label} not found in current date range`, 'error');
         }
     }, [records, handleViewOrderDetails, addNotification]);
 
@@ -206,10 +251,17 @@ const DashboardLayout: React.FC = () => {
                             }}
                             onTouchEnd={touchHandlers.onTouchEnd}
                         >
-                            <MainContent
-                                onViewOrderDetails={handleViewOrderDetails}
-                                onResyncOrder={handleResyncOrder}
-                            />
+                            {isSubsRoute ? (
+                                <OrderSubsPage />
+                            ) : (
+                                <MainContent
+                                    onViewOrderDetails={handleViewOrderDetails}
+                                    onResyncOrder={handleResyncOrder}
+                                    onChangeOrderStatus={handleChangeOrderStatus}
+                                    onSaveTracking={handleSaveTracking}
+                                    onSaveFfNote={handleSaveFfNote}
+                                />
+                            )}
                         </div>
                     </div>
                 </main>
@@ -222,8 +274,9 @@ const DashboardLayout: React.FC = () => {
                 <TabSettings />
             )}
             <ProductManager />
+            <UserManagementPage />
             {selectedOrder && (
-                <OrderDetailModal record={selectedOrder} onClose={closeOrderDetail} />
+                <OrderDetailModal record={selectedOrder} onClose={closeOrderDetail} onChangeOrderStatus={handleChangeOrderStatus} hideFinancials={role === 'design'} />
             )}
             <BottomNav tabs={visibleTabs} />
             <InstallPrompt />

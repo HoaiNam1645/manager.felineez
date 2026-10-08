@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { prisma } from '../_lib/prisma.js';
 import { requireAuth } from '../_lib/auth.js';
 import { badRequest, methodNotAllowed, serverError } from '../_lib/helpers.js';
+import { visibleCreatorIds, emailsByUserIds } from '../_lib/teamScope.js';
 
 const STATUS = new Set(['DRAFT', 'ACTIVE', 'ARCHIVED']);
 
@@ -12,10 +13,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === 'GET') {
       const { status, q, categoryId, page = '1', pageSize = '20' } = req.query as Record<string, string>;
-      const where: any = { teamId: auth.teamId };
+      const creatorIds = await visibleCreatorIds(auth);
+      const where: any = {
+        teamId: auth.teamId,
+        ...(creatorIds ? { createdById: { in: creatorIds } } : {}),
+      };
       if (status && STATUS.has(status)) where.status = status;
       if (categoryId) where.categoryId = categoryId === 'none' ? null : categoryId;
-      if (q) where.title = { contains: q };
+      if (q) {
+        where.OR = [
+          { title: { contains: q } },
+          { listingTitle: { contains: q } },
+          { description: { contains: q } },
+        ];
+      }
 
       const take = Math.min(Math.max(parseInt(pageSize, 10) || 20, 1), 100);
       const currentPage = Math.max(parseInt(page, 10) || 1, 1);
@@ -26,8 +37,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         prisma.product.count({ where }),
       ]);
 
+      const emailById = await emailsByUserIds(products.map((pr) => pr.createdById));
       return res.status(200).json({
-        products,
+        products: products.map((pr) => ({
+          ...pr,
+          createdByEmail: pr.createdById ? emailById.get(pr.createdById) ?? null : null,
+        })),
         total,
         page: currentPage,
         pageSize: take,

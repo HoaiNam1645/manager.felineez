@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from '../contexts/DashboardContext';
 import { getSettings, saveSettings } from '../services/firebaseService';
-import { syncRecordsToGoogleSheet } from '../services/googleSheetService';
+import { syncRecordsToGoogleSheet, extractSheetId } from '../services/googleSheetService';
 import { signInWithGoogle, getGoogleAccessToken } from '../services/authService';
 import { Record, Account } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -56,7 +56,7 @@ const GoogleSheetModal: React.FC<GoogleSheetModalProps> = ({ isOpen, onClose, re
         if (isOpen && teamId) {
             setIsLoading(true);
             getSettings(teamId).then(settings => {
-                if (settings.googleSheetId) setSheetId(settings.googleSheetId);
+                if (settings.googleSheetId) setSheetId(extractSheetId(settings.googleSheetId));
                 if (settings.autoSyncToSheet) setAutoSync(settings.autoSyncToSheet);
                 if (settings.sheetAccount) setSheetAccount(settings.sheetAccount);
             }).finally(() => setIsLoading(false));
@@ -227,7 +227,7 @@ const GoogleSheetModal: React.FC<GoogleSheetModalProps> = ({ isOpen, onClose, re
                                 <input
                                     type="text"
                                     value={sheetId}
-                                    onChange={(e) => setSheetId(e.target.value)}
+                                    onChange={(e) => setSheetId(extractSheetId(e.target.value))}
                                     placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvEbrup"
                                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
                                 />

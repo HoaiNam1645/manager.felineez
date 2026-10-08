@@ -3,7 +3,7 @@ import { api, setToken, clearToken, getToken } from './apiClient';
 export interface AuthUser {
   id: string;
   email: string;
-  role: 'OWNER' | 'USER';
+  role: 'OWNER' | 'LEADER' | 'USER' | 'FULFILLMENT' | 'DESIGN';
   teamId: string;
   permissions?: Record<string, boolean> | null;
   allowedAccounts?: string[] | null;

@@ -5,8 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 // ============ AUTH & TEAMS ============
@@ -23,11 +24,30 @@ model Team {
   notifications Notification[]
   products      Product[]
   categories    Category[]
+  sellerTeams   SellerTeam[]
 }
 
 enum Role {
   OWNER
+  LEADER
   USER
+  FULFILLMENT
+  DESIGN
+}
+
+// Sales team INSIDE a workspace (the `Team` model above is the auth tenant).
+// Sellers (users) are grouped here for per-team KPI; a LEADER heads a team.
+model SellerTeam {
+  id        String   @id @default(cuid())
+  teamId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  team    Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  members User[]
+
+  @@unique([teamId, name])
+  @@index([teamId])
 }
 
 model User {
@@ -39,11 +59,18 @@ model User {
   permissions     Json?
   allowedAccounts Json?
   fcmTokens       Json?
+  // Seller identifier codes for KPI (2-char SKU prefixes, uppercase, e.g. ["NA","MA"]).
+  // An order item is attributed to the user whose code == sku.slice(0,2).toUpperCase().
+  sellerCodes     Json?
+  sellerTeamId    String?
   createdAt       DateTime @default(now())
 
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team           Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  sellerTeam     SellerTeam?   @relation(fields: [sellerTeamId], references: [id], onDelete: SetNull)
+  linkedAccounts MailAccount[]
 
   @@index([teamId])
+  @@index([sellerTeamId])
 }
 
 // ============ MAIL ACCOUNTS ============
@@ -67,13 +94,17 @@ model MailAccount {
   lastKnownHistoryId     String?
   platforms              Json?
   sortOrder              Int?
+  // Who connected this mailbox (drives visibility: user sees own, leader sees team's).
+  linkedByUserId         String?
   createdAt              DateTime  @default(now())
 
-  team    Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  records Record[]
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  records  Record[]
+  linkedBy User?    @relation(fields: [linkedByUserId], references: [id], onDelete: SetNull)
 
   @@unique([teamId, email])
   @@index([teamId])
+  @@index([linkedByUserId])
 }
 
 // ============ RECORDS (orders, funds, case, help) ============
@@ -83,6 +114,7 @@ enum RecordKind {
   FUNDS
   CASE
   HELP
+  MESSAGE
 }
 
 model Record {
@@ -100,11 +132,26 @@ model Record {
   caseMsg      String?    @db.Text
   helpKind     String?
   costTotal    Decimal?   @db.Decimal(18, 4)
+  designCost   Decimal?   @db.Decimal(18, 4)
   ffCode       String?
+  // Fulfillment pipeline: NEW → DESIGNING → READY → PRODUCING → SHIPPED (+ ON_HOLD / CANCELLED)
+  orderStatus  String?    @db.VarChar(16)
+  trackingCode String?    @db.VarChar(64)
+  ffNote       String?    @db.VarChar(500)
   productName  String?    @db.Text
   details      Json?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+
+  // Outbound sync to external backend (feline). PENDING → SYNCED | FAILED.
+  syncStatus   String?    @default("PENDING")
+  syncedAt     DateTime?
+  syncError    String?    @db.Text
+  syncAttempts Int        @default(0)
+
+  // Financials imported from the Etsy "Sold Orders" CSV (fees, order net, sku…).
+  // Kept OUTSIDE `details` so an email re-parse can't wipe it.
+  etsyFees     Json?
 
   team    Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   account MailAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
@@ -113,6 +160,8 @@ model Record {
   @@index([teamId, dtLocal])
   @@index([teamId, orderId])
   @@index([teamId, kind])
+  @@index([teamId, syncStatus])
+  @@index([teamId, orderStatus])
 }
 
 // ============ MANUAL COSTS ============
@@ -158,11 +207,12 @@ enum ProductStatus {
 }
 
 model Category {
-  id        String   @id @default(cuid())
-  teamId    String
-  name      String
-  slug      String
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  teamId      String
+  name        String
+  slug        String
+  createdById String?  // who created it (drives team-scoped visibility)
+  createdAt   DateTime @default(now())
 
   team     Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   products Product[]

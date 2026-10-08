@@ -58,7 +58,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const message = (data && data.message) || res.statusText || 'Request failed';
-    if (res.status === 401) clearToken();
+    if (res.status === 401) {
+      clearToken();
+      // Without this the session goes zombie: the token is gone but the app keeps
+      // rendering cached data, and every later call fails with "Missing or invalid
+      // Authorization header". Tell the app so it drops back to the login screen.
+      // Login/logout calls are skipped — a bad password would bounce the user.
+      if (typeof window !== 'undefined' && !path.startsWith('/api/auth/')) {
+        window.dispatchEvent(new CustomEvent('nh:auth-changed'));
+      }
+    }
     throw new ApiError(message, res.status, data);
   }
 

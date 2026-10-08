@@ -312,7 +312,7 @@ async function syncBatchToSpecificSheet(
                 record.details.shippingAddress.country
             ].filter(Boolean).join('\n')
             : '';
-        const revenue = record.amount || 0;
+        const revenue = (record.order_status || record.orderStatus) === 'REFUND' ? 0 : (record.amount || 0);
         const baseCost = record.cost_total || 0;
 
         const itemsToProcess = (record.details?.items && record.details.items.length > 0)

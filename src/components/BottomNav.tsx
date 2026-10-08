@@ -6,7 +6,8 @@ import {
     DocumentTextIcon,
     QuestionMarkCircleIcon,
     TruckIcon,
-    TagIcon
+    TagIcon,
+    ChartBarIcon
 } from '@heroicons/react/24/outline';
 
 interface BottomNavProps {
@@ -76,6 +77,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ tabs }) => {
                 return <TagIcon className={iconClass} />;
             case 'Fulfill':
                 return <TruckIcon className={iconClass} />;
+            case 'KPI':
+                return <ChartBarIcon className={iconClass} />;
             case 'Support':
                 return <QuestionMarkCircleIcon className={iconClass} />;
             default:

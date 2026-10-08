@@ -1,6 +1,50 @@
-import { Record, ProcessedData, KpiData, KpiValue, TableData, Account, OverviewChartData, SummaryChartData, FulfillChartData, TopProduct } from '../types';
+import { Record, ProcessedData, KpiData, KpiValue, TableData, Account, OverviewChartData, SummaryChartData, FulfillChartData, TopProduct, SellerRankRow } from '../types';
 import { getHighResImageUrl } from './imageUtils';
 import { decodeHTMLEntities } from './htmlDecode';
+import { makeDesignItemKey } from './designItems';
+
+const ETSY_FALLBACK_FEE_RATE = 0.145;
+
+const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+const numericValue = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = typeof value === 'number' ? value : parseFloat(String(value));
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const isRefundedOrder = (record: Record): boolean => record.order_status === 'REFUND';
+const effectiveOrderAmount = (record: Record): number => isRefundedOrder(record) ? 0 : (record.amount || 0);
+
+const getOrderTotalForFeeEstimate = (record: Record): number => {
+    if (isRefundedOrder(record)) return 0;
+    return numericValue((record as any).etsy_fees?.orderTotal)
+        ?? numericValue(record.details?.financials?.orderTotal)
+        ?? numericValue(record.amount)
+        ?? 0;
+};
+
+const getOrderNetForProfit = (record: Record): number => {
+    if (isRefundedOrder(record)) return 0;
+    const fees = (record as any).etsy_fees;
+    const estActualNet = numericValue(fees?.estActualNet);
+    if (estActualNet !== null) return roundMoney(estActualNet);
+
+    const orderTotal = numericValue(fees?.orderTotal) ?? getOrderTotalForFeeEstimate(record);
+    const rawNet = numericValue(fees?.orderNet);
+    if (rawNet !== null && rawNet > 0) {
+        const rawFees = numericValue(fees?.cardFees) ?? 0;
+        return rawNet > orderTotal && rawNet + rawFees > 0
+            ? roundMoney((orderTotal * rawNet) / (rawNet + rawFees))
+            : roundMoney(rawNet);
+    }
+
+    if (record.source === 'Etsy_Sales') {
+        return roundMoney(getOrderTotalForFeeEstimate(record) * (1 - ETSY_FALLBACK_FEE_RATE));
+    }
+
+    return roundMoney(effectiveOrderAmount(record));
+};
 
 const formatCurrency = (value: number): string => {
     // Per user request to simplify KPI card display, always use a '$' symbol
@@ -106,13 +150,14 @@ export const processData = (
     const etsy = getPlatformRecords(uniqueRecords, 'Etsy_Sales', accountLabelMap, timeZone);
     const cases = getSupportRecords(uniqueRecords, 'case', accountLabelMap, timeZone);
     const help = getSupportRecords(uniqueRecords, 'help', accountLabelMap, timeZone);
-    const fulfill = (role === 'owner' || permissions.viewFulfill)
+    const messages = getSupportRecords(uniqueRecords, 'message', accountLabelMap, timeZone);
+    const fulfill = (role === 'owner' || role === 'fulfillment' || permissions.viewFulfill)
         ? getFulfillRecords(uniqueRecords, accountLabelMap, timeZone, manualCosts, filterDateRange)
         : { table: { headers: ['Fulfill'], rows: [["Permission Denied"]] }, merchizeChartData: [], printwayChartData: [] };
 
-    const { kpis: summaryKpis, table: summaryTable, chartData: summaryChartData, topProductsByShop } = (role === 'owner' || permissions.viewSales)
+    const { kpis: summaryKpis, table: summaryTable, chartData: summaryChartData, topProductsByShop, sellerRanking: summarySellerRanking } = (role === 'owner' || permissions.viewSales)
         ? calculateSummary(uniqueRecords, previousRecords, accountLabelMap, role, permissions, manualCosts, filterDateRange)
-        : { kpis: {}, table: { headers: ['Summary'], rows: [["Permission Denied"]] }, chartData: [], topProductsByShop: {} };
+        : { kpis: {}, table: { headers: ['Summary'], rows: [["Permission Denied"]] }, chartData: [], topProductsByShop: {}, sellerRanking: [] };
 
     return {
         overview: overviewData,
@@ -121,8 +166,9 @@ export const processData = (
         etsy,
         cases,
         help,
+        messages,
         fulfill,
-        summary: { kpis: summaryKpis, table: summaryTable, chartData: summaryChartData, topProductsByShop },
+        summary: { kpis: summaryKpis, table: summaryTable, chartData: summaryChartData, topProductsByShop, sellerRanking: summarySellerRanking },
         products: {
             headers: ['Image', 'Product Name', 'Shop', 'Quantity', 'Revenue'],
             rows: (() => {
@@ -133,7 +179,7 @@ export const processData = (
 
                     const shopName = accountLabelMap.get(r.account) || r.account;
                     const tax = r.details?.financials?.tax || 0;
-                    const netRevenue = r.amount - tax; // Revenue minus Tax
+                    const netRevenue = isRefundedOrder(r) ? 0 : effectiveOrderAmount(r) - tax; // Revenue minus Tax
 
                     if (r.details && r.details.items && r.details.items.length > 0) {
                         // Calculate total list value to determine weights
@@ -230,8 +276,11 @@ const calculateOverview = (
         [date: string]: {
             orders: Set<string>,
             revenue: { [currency: string]: number },
+            net: { [currency: string]: number },
             funds: { [currency: string]: number },
-            cost: { [currency: string]: number }
+            cost: { [currency: string]: number },
+            refundOrders: Set<string>,
+            refund: { [currency: string]: number }
         }
     } = {};
 
@@ -253,11 +302,12 @@ const calculateOverview = (
         }
         if (r.kind === 'order' && r.order_id) {
             dailyDataForTable[dailyGroupKey].orders.add(r.order_id);
-            if (r.amount > 0) {
-                dailyDataForTable[dailyGroupKey].revenue[currency] = (dailyDataForTable[dailyGroupKey].revenue[currency] || 0) + r.amount;
+            const orderAmount = effectiveOrderAmount(r);
+            if (orderAmount > 0) {
+                dailyDataForTable[dailyGroupKey].revenue[currency] = (dailyDataForTable[dailyGroupKey].revenue[currency] || 0) + orderAmount;
                 allCurrenciesForTable.revenue.add(currency);
             }
-            if (r.cost_total && r.cost_total > 0 && (role === 'owner' || permissions.viewFulfill)) {
+            if (r.cost_total && r.cost_total > 0 && (role === 'owner' || role === 'fulfillment' || permissions.viewFulfill)) {
                 dailyDataForTable[dailyGroupKey].cost['USD'] = (dailyDataForTable[dailyGroupKey].cost['USD'] || 0) + r.cost_total;
                 allCurrenciesForTable.cost.add('USD');
             }
@@ -270,9 +320,10 @@ const calculateOverview = (
         if (!groupedDataForChart[chartGroupKey]) {
             groupedDataForChart[chartGroupKey] = { orders: new Set(), revenue: {} };
         }
-        if (r.kind === 'order' && r.order_id && r.amount > 0) {
+        const chartOrderAmount = effectiveOrderAmount(r);
+        if (r.kind === 'order' && r.order_id && chartOrderAmount > 0) {
             groupedDataForChart[chartGroupKey].orders.add(r.order_id);
-            groupedDataForChart[chartGroupKey].revenue[currency] = (groupedDataForChart[chartGroupKey].revenue[currency] || 0) + r.amount;
+            groupedDataForChart[chartGroupKey].revenue[currency] = (groupedDataForChart[chartGroupKey].revenue[currency] || 0) + chartOrderAmount;
             allCurrenciesForChart.add(currency);
         }
     });
@@ -283,7 +334,7 @@ const calculateOverview = (
 
     const revenueHeaders = sortedRevenueCurrencies.map(c => `Revenue (${c})`);
     const fundsHeaders = (role === 'owner' || permissions.viewFunds) ? sortedFundsCurrencies.map(c => `Funds (${c})`) : [];
-    const costHeaders = (role === 'owner' || permissions.viewFulfill) ? sortedCostCurrencies.map(c => `Cost (${c})`) : [];
+    const costHeaders = (role === 'owner' || role === 'fulfillment' || permissions.viewFulfill) ? sortedCostCurrencies.map(c => `Cost (${c})`) : [];
 
     const headers = [
         "Date",
@@ -298,7 +349,7 @@ const calculateOverview = (
         .map(([date, data]) => {
             const revenueValues = sortedRevenueCurrencies.map(c => data.revenue[c] || 0);
             const fundsValues = (role === 'owner' || permissions.viewFunds) ? sortedFundsCurrencies.map(c => data.funds[c] || 0) : [];
-            const costValues = (role === 'owner' || permissions.viewFulfill) ? sortedCostCurrencies.map(c => data.cost[c] || 0) : [];
+            const costValues = (role === 'owner' || role === 'fulfillment' || permissions.viewFulfill) ? sortedCostCurrencies.map(c => data.cost[c] || 0) : [];
 
             return [
                 date,
@@ -335,13 +386,18 @@ const calculateOverview = (
 }
 
 const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, timeZone: string): TableData => {
-    const headers = ["Image", "Product Name", "Variants", "Order ID", "Revenue", "Currency", "Cost", "FF Code", "Case", "Help", "Account", "DateTime", "Source", "Actions"];
+    const headers = ["Order ID", "Image", "Product Name", "Variants", "Revenue", "Currency", "FF Cost", "DS Cost", "Profit", "FF Code", "Status", "Tracking", "Note", "FF Note", "Support", "Account", "DateTime", "Source", "Actions"];
     const orders = records.filter(r => r.kind === 'order');
     const cases = records.filter(r => r.kind === 'case');
     const helps = records.filter(r => r.kind === 'help');
+    const messages = records.filter(r => r.kind === 'message');
 
     const caseMap = new Map(cases.map(c => [c.order_id, c.case_msg || 'Yes']));
     const helpMap = new Map(helps.map(h => [h.order_id, h.help_kind || 'Yes']));
+    const msgCountMap = new Map<string, number>();
+    messages.forEach(m => {
+        if (m.order_id) msgCountMap.set(m.order_id, (msgCountMap.get(m.order_id) || 0) + 1);
+    });
 
     const sortedOrders = [...orders].sort((a, b) => new Date(b.dt_local).getTime() - new Date(a.dt_local).getTime());
 
@@ -350,9 +406,7 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
         if (o.details) {
             actions.push({ type: 'view', label: 'View', id: o.id! });
         }
-        if (o.email_id) {
-            actions.push({ type: 'resync', label: 'Resync', id: o.id! });
-        }
+        actions.push({ type: 'edit', label: 'Edit', id: o.id! });
 
         // --- New logic to get product name and image ---
         let productName = o.product_name || 'N/A';
@@ -380,22 +434,70 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
         }
         // --- End of new logic ---
 
+        actions.push({ type: 'fulfill', label: 'Fulfill', id: o.id! });
+        if (o.email_id) {
+            actions.push({ type: 'resync', label: 'Resync', id: o.id! });
+        }
+
         // Map Source
         let displaySource = o.source;
         if (o.source === 'Etsy_Sales') displaySource = 'Etsy';
         else if (o.source === 'Ebay_Sales') displaySource = 'eBay';
 
+        const moneyBase = getOrderNetForProfit(o);
+        const ffCost = o.cost_total ?? null;
+        const designCost = o.design_cost ?? null;
+        const totalCost = (ffCost ?? 0) + (designCost ?? 0);
+        const profit = (moneyBase != null && (ffCost != null || designCost != null))
+            ? Math.round((moneyBase - totalCost) * 100) / 100
+            : null;
+
         return [
-            { type: 'image', src: productImage, fullSrc: fullProductImage, alt: productName }, // New cell for image
-            productName, // New cell for product name
-            variants, // New cell for variants
             o.order_id || 'N/A',
-            o.amount,
+            { type: 'image', src: productImage, fullSrc: fullProductImage, alt: productName }, // kept for mobile cards; hidden on Order List desktop
+            // Per-item detail shown directly in the row; `name` keeps sort/export/mobile behavior
+            {
+                type: 'items',
+                name: productName,
+                id: o.id,
+                items: (o.details?.items || []).map((i, itemIndex) => {
+                    const itemName = decodeHTMLEntities(i.name);
+                    const designItemKey = makeDesignItemKey(o.id, itemIndex);
+                    return {
+                        name: itemName,
+                        variant: decodeHTMLEntities(i.variant || ''),
+                        personalization: i.personalization || '',
+                        quantity: i.quantity || 1,
+                        sku: i.sku || '',
+                        image: i.image || null,
+                        fullImage: getHighResImageUrl(i.image || null),
+                        designProductName: itemName,
+                        designRecordId: o.id,
+                        designItemKey,
+                    };
+                }),
+            } as any,
+            variants, // New cell for variants
+            {
+                type: 'value_with_unit' as const,
+                value: moneyBase,
+                display: moneyBase,
+            },
             o.currency || 'USD',
-            o.cost_total ?? null,
+            ffCost,
+            designCost,
+            profit,
             o.ff_code || '-',
-            o.order_id && caseMap.has(o.order_id) ? caseMap.get(o.order_id) : 'No',
-            o.order_id && helpMap.has(o.order_id) ? helpMap.get(o.order_id) : 'No',
+            { type: 'status', id: o.id!, value: o.order_status || 'NEW' } as any,
+            { type: 'tracking', id: o.id!, value: o.tracking_code || '' } as any,
+            { type: 'ordernote', id: o.id!, value: (o.details as any)?.orderNote || '' } as any,
+            { type: 'ffnote', id: o.id!, value: o.ff_note || '' } as any,
+            {
+                type: 'support',
+                case: o.order_id && caseMap.has(o.order_id) ? String(caseMap.get(o.order_id)) : 'No',
+                help: o.order_id && helpMap.has(o.order_id) ? String(helpMap.get(o.order_id)) : 'No',
+                msg: o.order_id && msgCountMap.has(o.order_id) ? String(msgCountMap.get(o.order_id)) : 'No',
+            } as any,
             accountLabelMap.get(o.account) || o.account,
             formatDateTime(o.dt_local, timeZone),
             displaySource,
@@ -448,7 +550,7 @@ const getPlatformRecords = (records: Record[], source: 'Ebay_Sales' | 'Etsy_Sale
             { type: 'image', src: productImage, fullSrc: fullProductImage, alt: productName },
             productName,
             r.order_id || 'N/A',
-            r.amount,
+            effectiveOrderAmount(r),
             r.currency || 'USD',
             accountLabelMap.get(r.account) || r.account,
             formatDateTime(r.dt_local, timeZone),
@@ -459,17 +561,17 @@ const getPlatformRecords = (records: Record[], source: 'Ebay_Sales' | 'Etsy_Sale
     return { headers, rows };
 }
 
-const getSupportRecords = (records: Record[], kind: 'case' | 'help', accountLabelMap: Map<string, string>, timeZone: string): TableData => {
-    const headers = kind === 'case'
-        ? ["Order Number", "Message", "Source", "Account", "DateTime"]
-        : ["Order Number", "Help Kind", "Source", "Account", "DateTime"];
+const getSupportRecords = (records: Record[], kind: 'case' | 'help' | 'message', accountLabelMap: Map<string, string>, timeZone: string): TableData => {
+    const headers = kind === 'help'
+        ? ["Order Number", "Help Kind", "Source", "Account", "DateTime"]
+        : ["Order Number", "Message", "Source", "Account", "DateTime"];
 
     const supportRecords = records.filter(r => r.kind === kind);
     const sortedRecords = [...supportRecords].sort((a, b) => new Date(b.dt_local).getTime() - new Date(a.dt_local).getTime());
 
     const rows = sortedRecords.map(r => [
         r.order_id || 'N/A',
-        kind === 'case' ? decodeHTMLEntities(r.case_msg || 'N/A') : decodeHTMLEntities(r.help_kind || 'N/A'),
+        kind === 'help' ? decodeHTMLEntities(r.help_kind || 'N/A') : decodeHTMLEntities(r.case_msg || 'N/A'),
         r.source,
         accountLabelMap.get(r.account) || r.account,
         formatDateTime(r.dt_local, timeZone),
@@ -577,7 +679,7 @@ const calculateSummary = (
     permissions: { [key: string]: boolean },
     manualCosts: any[],
     filterDateRange: { from: string; to: string }
-): { kpis: KpiData, table: TableData, chartData: SummaryChartData[], topProductsByShop: { [shopName: string]: TopProduct[] } } => {
+): { kpis: KpiData, table: TableData, chartData: SummaryChartData[], topProductsByShop: { [shopName: string]: TopProduct[] }, sellerRanking: SellerRankRow[] } => {
 
     const calculatePercentageChange = (current: number, previous: number): { change: number; direction: 'up' | 'down' | 'neutral' } => {
         if (previous === 0) {
@@ -614,10 +716,11 @@ const calculateSummary = (
             const currency = r.currency || 'USD';
             if (r.kind === 'order') {
                 if (r.order_id) raw.orderIds.add(r.order_id);
-                if (r.amount > 0) {
-                    raw.revenueByCurrency[currency] = (raw.revenueByCurrency[currency] || 0) + r.amount;
+                const orderAmount = effectiveOrderAmount(r);
+                if (orderAmount > 0) {
+                    raw.revenueByCurrency[currency] = (raw.revenueByCurrency[currency] || 0) + orderAmount;
                 }
-                if (r.cost_total && r.cost_total > 0 && (role === 'owner' || permissions.viewFulfill)) {
+                if (r.cost_total && r.cost_total > 0 && (role === 'owner' || role === 'fulfillment' || permissions.viewFulfill)) {
                     raw.costByCurrency['USD'] = (raw.costByCurrency['USD'] || 0) + r.cost_total;
                 }
             } else if (r.kind === 'Funds' && r.amount > 0 && (role === 'owner' || permissions.viewFunds)) {
@@ -634,7 +737,7 @@ const calculateSummary = (
         cost.date >= filterDateRange.from && cost.date <= filterDateRange.to
     );
 
-    if (role === 'owner' || permissions.viewFulfill) {
+    if (role === 'owner' || role === 'fulfillment' || permissions.viewFulfill) {
         filteredManualCosts.forEach(cost => {
             const currency = cost.currency || 'USD';
             currentRawKpis.costByCurrency[currency] = (currentRawKpis.costByCurrency[currency] || 0) + cost.cost;
@@ -681,7 +784,7 @@ const calculateSummary = (
         kpis['Funds'] = { value: '---' };
     }
 
-    if (role === 'owner' || permissions.viewFulfill) {
+    if (role === 'owner' || role === 'fulfillment' || permissions.viewFulfill) {
         const costKpis = processFinancialKpi(currentRawKpis.costByCurrency, previousRawKpis?.costByCurrency || null);
         kpis['Cost'] = costKpis || { value: '---' };
     } else {
@@ -699,7 +802,7 @@ const calculateSummary = (
 
     // Initialize shopData for ALL accounts to ensure 0-order shops are listed
     accountLabelMap.forEach((_label, email) => {
-        shopData[email] = { revenue: {}, orders: new Set(), funds: {}, cost: {} };
+        shopData[email] = { revenue: {}, net: {}, orders: new Set(), funds: {}, cost: {}, refundOrders: new Set(), refund: {} };
     });
 
     const allTableCurrencies = { revenue: new Set<string>(), funds: new Set<string>(), cost: new Set<string>() };
@@ -711,7 +814,7 @@ const calculateSummary = (
         const shopLabel = accountLabelMap.get(r.account) || r.account;
 
         if (!shopData[r.account]) {
-            shopData[r.account] = { revenue: {}, orders: new Set(), funds: {}, cost: {} };
+            shopData[r.account] = { revenue: {}, net: {}, orders: new Set(), funds: {}, cost: {}, refundOrders: new Set(), refund: {} };
         }
 
         // Init Product Stats Map for Shop
@@ -722,11 +825,24 @@ const calculateSummary = (
         const currency = r.currency || 'USD';
         if (r.kind === 'order') {
             if (r.order_id) shopData[r.account].orders.add(r.order_id);
-            if (r.amount > 0) {
-                shopData[r.account].revenue[currency] = (shopData[r.account].revenue[currency] || 0) + r.amount;
+            if (isRefundedOrder(r)) {
+                const refundKey = r.order_id || r.id || `${r.account}_${r.dt_local}`;
+                shopData[r.account].refundOrders.add(refundKey);
+                const refundAmount = Math.max(0, Number(r.amount) || 0);
+                if (refundAmount > 0) {
+                    shopData[r.account].refund[currency] = (shopData[r.account].refund[currency] || 0) + refundAmount;
+                }
+            }
+            const orderAmount = effectiveOrderAmount(r);
+            if (orderAmount > 0) {
+                shopData[r.account].revenue[currency] = (shopData[r.account].revenue[currency] || 0) + orderAmount;
                 allTableCurrencies.revenue.add(currency);
             }
-            if (r.cost_total && r.cost_total > 0 && (role === 'owner' || permissions.viewFulfill)) {
+            const orderNet = getOrderNetForProfit(r);
+            if (orderNet > 0) {
+                shopData[r.account].net[currency] = (shopData[r.account].net[currency] || 0) + orderNet;
+            }
+            if (r.cost_total && r.cost_total > 0 && (role === 'owner' || role === 'fulfillment' || permissions.viewFulfill)) {
                 shopData[r.account].cost['USD'] = (shopData[r.account].cost['USD'] || 0) + r.cost_total;
                 allTableCurrencies.cost.add('USD');
             }
@@ -743,7 +859,7 @@ const calculateSummary = (
 
                     productStatsByShop[shopLabel].set(name, {
                         qty: current.qty + item.quantity,
-                        rev: current.rev + (item.quantity * item.price),
+                        rev: current.rev + (isRefundedOrder(r) ? 0 : (item.quantity * item.price)),
                         image: image
                     });
                 });
@@ -757,7 +873,7 @@ const calculateSummary = (
                     // For 'Best Selling' by quantity, just incrementing qty is safer
                     productStatsByShop[shopLabel].set(name, {
                         qty: current.qty + 1,
-                        rev: current.rev + r.amount, // Rough estimate
+                        rev: current.rev + orderAmount, // Rough estimate
                         image: current.image
                     });
                 });
@@ -769,7 +885,7 @@ const calculateSummary = (
     });
 
     const manualCostData: { cost: { [currency: string]: number } } = { cost: {} };
-    if ((role === 'owner' || permissions.viewFulfill) && filteredManualCosts.length > 0) {
+    if ((role === 'owner' || role === 'fulfillment' || permissions.viewFulfill) && filteredManualCosts.length > 0) {
         filteredManualCosts.forEach(cost => {
             const currency = cost.currency || 'USD';
             manualCostData.cost[currency] = (manualCostData.cost[currency] || 0) + cost.cost;
@@ -798,7 +914,7 @@ const calculateSummary = (
 
     const tableHeaders = ["Shop", "Orders", "Revenue"];
     if (role === 'owner' || permissions.viewFunds) tableHeaders.push("Funds");
-    if (role === 'owner' || permissions.viewFulfill) tableHeaders.push("Cost (USD)");
+    if (role === 'owner' || role === 'fulfillment' || permissions.viewFulfill) tableHeaders.push("Cost (USD)");
 
     const tableRows = Object.entries(shopData).map(([account, data]) => {
         const revenue = formatMixedCurrency(data.revenue);
@@ -814,7 +930,7 @@ const calculateSummary = (
             row.push({ type: 'value_with_unit' as const, value: funds.value, display: funds.display });
         }
 
-        if (role === 'owner' || permissions.viewFulfill) {
+        if (role === 'owner' || role === 'fulfillment' || permissions.viewFulfill) {
             // Cost is default USD per user request, but we handle the map sum for valid display number
             let totalCost = 0;
             Object.values(data.cost).forEach(v => totalCost += v);
@@ -824,7 +940,7 @@ const calculateSummary = (
         return row;
     }).sort((a, b) => (b[1] as number) - (a[1] as number));
 
-    if ((role === 'owner' || permissions.viewFulfill) && Object.keys(manualCostData.cost).length > 0) {
+    if ((role === 'owner' || role === 'fulfillment' || permissions.viewFulfill) && Object.keys(manualCostData.cost).length > 0) {
         let totalManualCost = 0;
         Object.values(manualCostData.cost).forEach(v => totalManualCost += v);
 
@@ -876,5 +992,39 @@ const calculateSummary = (
         topProductsByShop[shop] = sortedProducts;
     });
 
-    return { kpis, table: { headers: tableHeaders, rows: tableRows }, chartData: summaryChartData, topProductsByShop };
+    // --- SELLER RANKING (structured: all Shop Summary fields + total items) ---
+    // Total items = sum of item quantities across all of a shop's orders.
+    const totalItemsByShop: { [label: string]: number } = {};
+    Object.entries(productStatsByShop).forEach(([label, statMap]) => {
+        let total = 0;
+        statMap.forEach(v => { total += v.qty; });
+        totalItemsByShop[label] = total;
+    });
+
+    const canFunds = role === 'owner' || permissions.viewFunds;
+    const canFulfill = role === 'owner' || permissions.viewFulfill;
+    const sellerRanking: SellerRankRow[] = Object.entries(shopData).map(([account, data]) => {
+        const seller = accountLabelMap.get(account) || account;
+        const revenue = formatMixedCurrency(data.revenue);
+        const net = formatMixedCurrency(data.net);
+        const funds = formatMixedCurrency(data.funds);
+        const refund = formatMixedCurrency(data.refund);
+        let totalCost = 0;
+        Object.values(data.cost).forEach(v => { totalCost += v; });
+        return {
+            seller,
+            orders: data.orders.size,
+            items: totalItemsByShop[seller] || 0,
+            revenue: { value: revenue.value, display: revenue.display },
+            funds: canFunds ? { value: funds.value, display: funds.display } : undefined,
+            cost: canFulfill ? totalCost : undefined,
+            profit: canFulfill ? net.value - totalCost : undefined,
+            refund: { count: data.refundOrders.size, amount: { value: refund.value, display: refund.display } },
+        };
+    })
+        // Drop completely inactive shops; rank by revenue (highest first).
+        .filter(s => s.orders > 0 || s.items > 0 || s.revenue.value > 0)
+        .sort((a, b) => b.revenue.value - a.revenue.value);
+
+    return { kpis, table: { headers: tableHeaders, rows: tableRows }, chartData: summaryChartData, topProductsByShop, sellerRanking };
 }

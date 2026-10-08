@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { prisma } from '../_lib/prisma.js';
 import { requireAuth } from '../_lib/auth.js';
+import { visibleCreatorIds } from '../_lib/teamScope.js';
 import { badRequest, methodNotAllowed, notFound, parseId, serverError } from '../_lib/helpers.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -13,6 +14,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const category = await prisma.category.findUnique({ where: { id } });
     if (!category || category.teamId !== auth.teamId) return notFound(res);
+    // Non-owners may only touch categories created within their seller team.
+    const creatorIds = await visibleCreatorIds(auth);
+    if (creatorIds && (!category.createdById || !creatorIds.includes(category.createdById))) {
+      return notFound(res);
+    }
 
     if (req.method === 'PATCH') {
       const { name } = req.body || {};

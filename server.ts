@@ -86,8 +86,29 @@ await mountRoutes(apiDir, '/api');
 
 // Static frontend
 if (fs.existsSync(staticDir)) {
-  app.use(express.static(staticDir, { index: false, maxAge: '1y' }));
+  app.use(express.static(staticDir, {
+    index: false,
+    maxAge: '1y',
+    immutable: true,
+    setHeaders: (res, filePath) => {
+      const name = path.basename(filePath);
+      if (
+        name === 'index.html' ||
+        name === 'sw.js' ||
+        name === 'registerSW.js' ||
+        name === 'manifest.webmanifest' ||
+        name.startsWith('workbox-')
+      ) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
+    },
+  }));
   app.get(/^(?!\/api\/).*/, (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(staticDir, 'index.html'));
   });
   console.log(`[server] serving static from ${staticDir}`);

@@ -14,7 +14,10 @@ const getTodayInTimezone = (timeZone: string): Date => {
     return new Date(Date.UTC(year, month - 1, day));
 };
 
+const ALL_DATA_START = new Date(Date.UTC(2025, 0, 1));
+
 const presets = [
+    { label: 'All', getRange: (today: Date) => ({ from: ALL_DATA_START, to: today }) },
     { label: 'Today', getRange: (today: Date) => ({ from: today, to: today }) },
     { label: 'Yesterday', getRange: (today: Date) => { const d = new Date(today); d.setUTCDate(d.getUTCDate() - 1); return { from: d, to: d }; } },
     { label: 'Last 7 days', getRange: (today: Date) => { const f = new Date(today); f.setUTCDate(f.getUTCDate() - 6); return { from: f, to: today }; } },

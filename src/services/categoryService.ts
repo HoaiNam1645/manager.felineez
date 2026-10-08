@@ -6,6 +6,7 @@ export interface Category {
   slug: string;
   productCount?: number;
   createdAt?: string;
+  createdByEmail?: string | null;
 }
 
 export async function listCategories(): Promise<Category[]> {

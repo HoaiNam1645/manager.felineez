@@ -15,6 +15,7 @@ const SupportTab: React.FC<SupportTabProps> = ({ processedData }) => {
     const displayData = useMemo(() => {
         const caseRows = processedData.cases.rows;
         const helpRows = processedData.help.rows;
+        const messageRows = processedData.messages?.rows || [];
 
         // Common headers for consistent display
         const commonHeaders = [
@@ -34,11 +35,15 @@ const SupportTab: React.FC<SupportTabProps> = ({ processedData }) => {
         if (supportFilter === 'Help') {
             return { headers: displayHeaders, rows: helpRows.map(row => row.slice(0, 5)) };
         }
+        if (supportFilter === 'Message') {
+            return { headers: displayHeaders, rows: messageRows.map(row => row.slice(0, 5)) };
+        }
 
         // Combine for 'All'
         const combinedRows = [
             ...caseRows,
-            ...helpRows
+            ...helpRows,
+            ...messageRows
         ].sort((a, b) => {
             const dateA = new Date(a[5] as string).getTime();
             const dateB = new Date(b[5] as string).getTime();
@@ -53,7 +58,7 @@ const SupportTab: React.FC<SupportTabProps> = ({ processedData }) => {
 
         return { headers: displayHeaders, rows: displayRows };
 
-    }, [processedData.cases.rows, processedData.help.rows, supportFilter]);
+    }, [processedData.cases.rows, processedData.help.rows, processedData.messages, supportFilter]);
 
     return (
         <div className="h-full bg-gray-50 dark:bg-gray-900 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">

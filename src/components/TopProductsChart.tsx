@@ -11,6 +11,27 @@ interface TopProductsChartProps {
   hideTitle?: boolean;
 }
 
+// Sentinel for the aggregate "All Shops" option in the shop dropdown.
+const ALL_SHOPS = '__all__';
+
+// Merge products across every shop by product name, summing quantity + revenue.
+const aggregateAllShops = (data: { [shopName: string]: TopProduct[] }): TopProduct[] => {
+  const merged = new Map<string, TopProduct>();
+  Object.values(data).forEach(products => {
+    (products || []).forEach(p => {
+      const existing = merged.get(p.name);
+      if (existing) {
+        existing.quantity += p.quantity;
+        existing.revenue += p.revenue;
+        if (!existing.image && p.image) existing.image = p.image;
+      } else {
+        merged.set(p.name, { ...p });
+      }
+    });
+  });
+  return Array.from(merged.values()).sort((a, b) => b.quantity - a.quantity);
+};
+
 // 1. Custom Tick: Xử lý sự kiện chuột trái (onClick)
 const CustomYAxisTick = ({ x, y, payload, data, onClick }: any) => {
   // Tìm thông tin sản phẩm để lấy ảnh
@@ -53,7 +74,8 @@ const TopProductsChart: React.FC<TopProductsChartProps> = ({ data, hideTitle = f
   }
 
   const shopNames = Object.keys(data).sort();
-  const [selectedShop, setSelectedShop] = useState<string>(shopNames.length > 0 ? shopNames[0] : '');
+  // Default to the aggregate "All Shops" view (top products across every shop).
+  const [selectedShop, setSelectedShop] = useState<string>(ALL_SHOPS);
   const [limit, setLimit] = useState<number>(10);
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -61,8 +83,9 @@ const TopProductsChart: React.FC<TopProductsChartProps> = ({ data, hideTitle = f
   const [previewProduct, setPreviewProduct] = useState<TopProduct | null>(null);
 
   useEffect(() => {
-    if (shopNames.length > 0 && (!selectedShop || !data[selectedShop])) {
-      setSelectedShop(shopNames[0]);
+    // Keep the "All Shops" aggregate; only reset when a picked shop disappears.
+    if (shopNames.length > 0 && selectedShop !== ALL_SHOPS && (!selectedShop || !data[selectedShop])) {
+      setSelectedShop(ALL_SHOPS);
     }
   }, [data, shopNames, selectedShop]);
 
@@ -111,7 +134,7 @@ const TopProductsChart: React.FC<TopProductsChartProps> = ({ data, hideTitle = f
     return null;
   }
 
-  const fullChartData = data[selectedShop] || [];
+  const fullChartData = selectedShop === ALL_SHOPS ? aggregateAllShops(data) : (data[selectedShop] || []);
   // Slice data chỉ để hiển thị trên Chart, không ảnh hưởng Export
   const chartData = fullChartData.slice(0, limit);
 
@@ -178,6 +201,7 @@ const TopProductsChart: React.FC<TopProductsChartProps> = ({ data, hideTitle = f
             onChange={(e) => setSelectedShop(e.target.value)}
             className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 min-w-[120px]"
           >
+            <option value={ALL_SHOPS}>🏬 All Shops</option>
             {shopNames.map((shop) => (
               <option key={shop} value={shop}>
                 {shop}
@@ -233,7 +257,7 @@ const TopProductsChart: React.FC<TopProductsChartProps> = ({ data, hideTitle = f
               <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
-              <p className="text-sm font-medium">No products for {selectedShop}</p>
+              <p className="text-sm font-medium">No products for {selectedShop === ALL_SHOPS ? 'All Shops' : selectedShop}</p>
               <p className="text-xs mt-1">Try selecting another shop from the dropdown above</p>
             </div>
           </div>

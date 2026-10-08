@@ -6,13 +6,17 @@ interface UseRecordFilteringProps {
     accounts: Account[];
     selectedAccountId: string;
     searchTerm: string;
+    // FULFILLMENT works across all shops: the server already scopes records per
+    // role, and their visible-accounts list is empty — skip the account filter.
+    bypassAccountFilter?: boolean;
 }
 
 export const useRecordFiltering = ({
     records,
     accounts,
     selectedAccountId,
-    searchTerm
+    searchTerm,
+    bypassAccountFilter = false
 }: UseRecordFilteringProps) => {
 
     const filteredRecords = useMemo(() => {
@@ -26,7 +30,9 @@ export const useRecordFiltering = ({
         );
 
         // First filter: only records with valid account that's in allowedEmails
-        let baseFiltered = records.filter(r => r.account && allowedEmails.has(r.account));
+        let baseFiltered = bypassAccountFilter
+            ? records
+            : records.filter(r => r.account && allowedEmails.has(r.account));
 
         // Second filter: specific account selection
         if (selectedAccountId && selectedAccountId !== 'all') {
@@ -45,7 +51,7 @@ export const useRecordFiltering = ({
             });
         }
         return baseFiltered;
-    }, [records, accounts, selectedAccountId, searchTerm]);
+    }, [records, accounts, selectedAccountId, searchTerm, bypassAccountFilter]);
 
     return filteredRecords;
 };

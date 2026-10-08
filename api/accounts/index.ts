@@ -13,7 +13,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         where: { teamId: auth.teamId },
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
       });
-      return res.status(200).json({ accounts });
+
+      // Visibility scoping:
+      //   OWNER  → all team accounts
+      //   LEADER → accounts linked by their seller-team members (+ own allowedAccounts)
+      //   USER   → accounts they linked themselves (+ own allowedAccounts)
+      let scoped = accounts;
+      if (auth.role !== 'OWNER') {
+        const me = await prisma.user.findUnique({
+          where: { id: auth.userId },
+          select: { id: true, sellerTeamId: true, allowedAccounts: true },
+        });
+        const allowedEmails = new Set(
+          Array.isArray(me?.allowedAccounts) ? (me!.allowedAccounts as string[]) : []
+        );
+        const linkerIds = new Set<string>([auth.userId]);
+        if (auth.role === 'LEADER' && me?.sellerTeamId) {
+          const members = await prisma.user.findMany({
+            where: { teamId: auth.teamId, sellerTeamId: me.sellerTeamId },
+            select: { id: true },
+          });
+          members.forEach((m) => linkerIds.add(m.id));
+        }
+        scoped = accounts.filter(
+          (a) => (a.linkedByUserId && linkerIds.has(a.linkedByUserId)) || allowedEmails.has(a.email)
+        );
+      }
+
+      // Attach the linker's email for display in the Mail Accounts list.
+      const linkerUserIds = Array.from(
+        new Set(scoped.map((a) => a.linkedByUserId).filter(Boolean))
+      ) as string[];
+      const linkers = linkerUserIds.length
+        ? await prisma.user.findMany({ where: { id: { in: linkerUserIds } }, select: { id: true, email: true } })
+        : [];
+      const linkerEmailById = new Map(linkers.map((u) => [u.id, u.email]));
+      const withLinker = scoped.map((a) => ({
+        ...a,
+        linkedByEmail: a.linkedByUserId ? linkerEmailById.get(a.linkedByUserId) ?? null : null,
+      }));
+
+      return res.status(200).json({ accounts: withLinker });
     }
 
     if (req.method === 'POST') {
@@ -23,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const providerEnum = String(provider).toUpperCase() === 'OUTLOOK' ? 'OUTLOOK' : 'GMAIL';
 
-      const account = await prisma.mailAccount.upsert({
+      let account = await prisma.mailAccount.upsert({
         where: { teamId_email: { teamId: auth.teamId, email: String(email).toLowerCase() } },
         update: {
           token: String(token),
@@ -38,8 +78,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           token: String(token),
           platforms: platforms ?? null,
           sortOrder: typeof sortOrder === 'number' ? sortOrder : null,
+          // Record who connected this mailbox (drives per-user visibility).
+          linkedByUserId: auth.userId,
         },
       });
+      // Legacy accounts have no linker — the next user who re-links it claims it.
+      if (!account.linkedByUserId) {
+        account = await prisma.mailAccount.update({
+          where: { id: account.id },
+          data: { linkedByUserId: auth.userId },
+        });
+      }
       return res.status(201).json({ account });
     }
 

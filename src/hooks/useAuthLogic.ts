@@ -17,7 +17,7 @@ export interface User {
 
 export interface UserProfile {
   teamId: string;
-  role: 'owner' | 'user';
+  role: 'owner' | 'leader' | 'user' | 'fulfillment' | 'design';
   permissions: { [key: string]: boolean };
   allowedAccounts?: string[];
   email?: string;
@@ -29,7 +29,7 @@ function toLegacy(u: AuthUser): { user: User; profile: UserProfile } {
     user: { uid: u.id, email: u.email },
     profile: {
       teamId: u.teamId,
-      role: u.role === 'OWNER' ? 'owner' : 'user',
+      role: u.role === 'OWNER' ? 'owner' : u.role === 'LEADER' ? 'leader' : u.role === 'FULFILLMENT' ? 'fulfillment' : u.role === 'DESIGN' ? 'design' : 'user',
       permissions: (u.permissions as { [k: string]: boolean }) || {},
       allowedAccounts: (u.allowedAccounts as string[] | undefined) || undefined,
       email: u.email,

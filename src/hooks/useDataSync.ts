@@ -22,7 +22,7 @@ import type { User } from './useAuthLogic';
 interface UseDataSyncProps {
     user: User | null;
     teamId: string;
-    role: 'owner' | 'user';
+    role: 'owner' | 'leader' | 'user' | 'fulfillment' | 'design';
     filterDateRange: { from: string; to: string };
     timeZone: string;
     addNotification: (message: string, type: 'success' | 'error' | 'info') => void;

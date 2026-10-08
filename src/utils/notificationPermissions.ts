@@ -145,21 +145,21 @@ export const getNotificationDeepLink = (notification: Notification): string => {
         case 'NEW_ORDER':
             // Link to order detail if we have order_id
             if (notification.metadata.order_id) {
-                return `${baseUrl}/?tab=Order+List&order=${encodeURIComponent(notification.metadata.order_id)}`;
+                return `${baseUrl}/orders?order=${encodeURIComponent(notification.metadata.order_id)}`;
             }
-            return `${baseUrl}/?tab=Order+List`;
+            return `${baseUrl}/orders`;
 
         case 'SUMMARY':
             // Link to overview tab
-            return `${baseUrl}/?tab=Overview`;
+            return `${baseUrl}/overview`;
 
         case 'FUND':
             // Link to overview with fund filter or specific date
-            return `${baseUrl}/?tab=Overview`;
+            return `${baseUrl}/overview`;
 
         case 'CASE_HELP':
             // Link to support tab
-            return `${baseUrl}/?tab=Support`;
+            return `${baseUrl}/support`;
 
         case 'LOGIN':
             // Link to notification center to view login details

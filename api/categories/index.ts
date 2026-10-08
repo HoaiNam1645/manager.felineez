@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { prisma } from '../_lib/prisma.js';
 import { requireAuth } from '../_lib/auth.js';
 import { badRequest, methodNotAllowed, serverError } from '../_lib/helpers.js';
+import { visibleCreatorIds, emailsByUserIds } from '../_lib/teamScope.js';
 
 function slugify(name: string): string {
   return name
@@ -20,18 +21,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === 'GET') {
+      // Owner sees all; leader/user see only their seller-team's categories.
+      const creatorIds = await visibleCreatorIds(auth);
       const categories = await prisma.category.findMany({
-        where: { teamId: auth.teamId },
+        where: {
+          teamId: auth.teamId,
+          ...(creatorIds ? { createdById: { in: creatorIds } } : {}),
+        },
         orderBy: { name: 'asc' },
-        include: { _count: { select: { products: true } } },
       });
+
+      // Product counts scoped the same way as the folders the viewer will see.
+      const counts = await prisma.product.groupBy({
+        by: ['categoryId'],
+        where: {
+          teamId: auth.teamId,
+          ...(creatorIds ? { createdById: { in: creatorIds } } : {}),
+        },
+        _count: { _all: true },
+      });
+      const countByCat = new Map(counts.map((c) => [c.categoryId, c._count._all]));
+      const emailById = await emailsByUserIds(categories.map((c) => c.createdById));
+
       return res.status(200).json({
         categories: categories.map((c) => ({
           id: c.id,
           name: c.name,
           slug: c.slug,
-          productCount: c._count.products,
+          productCount: countByCat.get(c.id) ?? 0,
           createdAt: c.createdAt,
+          createdByEmail: c.createdById ? emailById.get(c.createdById) ?? null : null,
         })),
       });
     }
@@ -48,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (existing) slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
 
       const category = await prisma.category.create({
-        data: { teamId: auth.teamId, name: String(name).trim(), slug },
+        data: { teamId: auth.teamId, name: String(name).trim(), slug, createdById: auth.userId },
       });
       return res.status(201).json({ category });
     }

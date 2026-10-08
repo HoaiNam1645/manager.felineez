@@ -46,6 +46,8 @@ export interface OrderDetails {
     orderTotal: number;
   };
   detectedCurrency?: string;
+  shopName?: string;
+  buyerMessage?: string;
 }
 
 export interface Record {
@@ -61,9 +63,43 @@ export interface Record {
   case_msg?: string | null;
   help_kind?: string | null;
   cost_total?: number;
+  design_cost?: number;
   ff_code?: string;
   product_name?: string;
   details?: OrderDetails; // Added detailed info
+  etsy_fees?: EtsyFees; // Imported from the Etsy Sold Orders CSV
+}
+
+// Financials imported from the Etsy "Sold Orders" CSV (per order).
+export interface EtsyFees {
+  orderValue?: number;
+  discount?: number;
+  shippingDiscount?: number;
+  shipping?: number;
+  tax?: number;
+  orderTotal?: number;
+  cardFees?: number;
+  orderNet?: number;
+  currency?: string;
+  sku?: string | null;
+  couponCode?: string | null;
+  saleDate?: string | null;
+  dateShipped?: string | null;
+  numberOfItems?: number | null;
+  importedAt?: string;
+  // Derived at import/backfill time (see api/_lib/etsyNet.ts):
+  shopCurrency?: 'VND' | 'USD';
+  exchangeRate?: number | null; // VND per USD (VND shops)
+  cardFeesUsd?: number;         // processing fee normalized to USD
+  orderNetUsd?: number;         // CSV-style net normalized to USD
+  estBreakdown?: {
+    taxWithheld: number;
+    transactionFee: number;
+    processingFee: number;
+    regulatoryFee: number;
+    vat: number;
+  };
+  estActualNet?: number;        // ≈ Etsy "You earned" for this order
 }
 
 export interface CostData {

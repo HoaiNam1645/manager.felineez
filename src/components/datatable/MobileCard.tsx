@@ -1,9 +1,12 @@
 import React from 'react';
 import Spinner from '../Spinner';
 import CachedImage from './CachedImage';
+import { ffFactoryName } from '../../utils/ffCode';
+import OrderStatusSelect from './OrderStatusSelect';
 import { ListChildComponentProps, RowData } from './types';
+import { PaintBrushIcon } from '@heroicons/react/24/outline';
 
-const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<string>, onResyncClick: (id: string) => void, onViewOrderDetails?: (id: string) => void, onViewDayDetails?: (date: string) => void, rowData?: any[], isMobile: boolean = false) => {
+const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<string>, onResyncClick: (id: string) => void, onViewOrderDetails?: (id: string) => void, onViewDayDetails?: (date: string) => void, rowData?: any[], isMobile: boolean = false, onFulfillClick?: (id: string) => void, onEditClick?: (id: string) => void, onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void) => {
     if (cell === 'Click for detail' && onViewDayDetails && rowData) {
         const date = rowData[0] as string;
         return (
@@ -27,6 +30,39 @@ const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<strin
                         key={i}
                         onClick={() => onViewOrderDetails && onViewOrderDetails(action.id)}
                         className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 text-xs font-semibold transition-colors"
+                    >
+                        {action.label}
+                    </button>
+                );
+            }
+            if (action.type === 'edit') {
+                return (
+                    <button
+                        key={i}
+                        onClick={() => onEditClick && onEditClick(action.id)}
+                        className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded hover:bg-emerald-200 dark:hover:bg-emerald-900/50 text-xs font-semibold transition-colors"
+                    >
+                        {action.label}
+                    </button>
+                );
+            }
+            if (action.type === 'fulfill') {
+                return (
+                    <button
+                        key={i}
+                        onClick={() => onFulfillClick && onFulfillClick(action.id)}
+                        className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-xs font-semibold transition-colors"
+                    >
+                        {action.label}
+                    </button>
+                );
+            }
+            if (action.type === 'design') {
+                return (
+                    <button
+                        key={i}
+                        onClick={() => onDesignClick && onDesignClick(action.productName || '')}
+                        className="px-3 py-1 bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 rounded hover:bg-pink-200 dark:hover:bg-pink-900/50 text-xs font-semibold transition-colors"
                     >
                         {action.label}
                     </button>
@@ -80,6 +116,12 @@ const renderTextContent = (cell: any) => {
         }
         return cell.display;
     }
+    if (cell && typeof cell === 'object' && cell.type === 'items') {
+        return cell.name || '';
+    }
+    if (cell && typeof cell === 'object' && cell.type === 'order_meta') {
+        return cell.orderId || '';
+    }
     return typeof cell === 'number'
         ? (cell === 0
             ? <span className="text-gray-300 dark:text-gray-600">--</span>
@@ -90,14 +132,51 @@ const renderTextContent = (cell: any) => {
         : (typeof cell === 'string' ? cell : '');
 }
 
-const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) => {
-    const { items, headers, loadingItems, onViewDayDetails, onViewOrderDetails, onResyncClick, onImageClick, isMobile } = data;
-    const row = items[index];
+const ItemDesignButton = ({ productName, recordId, designItemKey, hasDesign, hasDesignFiles, designFileCount, onDesignClick }: { productName?: string; recordId?: string; designItemKey?: string; hasDesign?: boolean; hasDesignFiles?: boolean; designFileCount?: number; onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void }) => {
+    if (!productName || !onDesignClick) return null;
+    const colorClass = hasDesignFiles
+        ? 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300'
+        : hasDesign
+            ? 'text-pink-600 hover:bg-pink-50 hover:text-pink-700 dark:text-pink-400 dark:hover:bg-pink-900/30 dark:hover:text-pink-300'
+            : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-300';
+    return (
+        <button
+            type="button"
+            onClick={() => onDesignClick(productName, recordId, designItemKey)}
+            className={`inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium transition-colors ${colorClass}`}
+            title={hasDesignFiles ? `Design folder has ${designFileCount || 0} file(s)` : hasDesign ? 'Design folder exists, no files yet' : 'Open design folder'}
+        >
+            <PaintBrushIcon className="h-3.5 w-3.5" />
+            <span>Design</span>
+        </button>
+    );
+};
 
+const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) => {
+    const { items, headers, loadingItems, statusUpdating, onViewDayDetails, onViewOrderDetails, onResyncClick, onStatusChange, onTrackingClick, onOrderNoteClick, onFfNoteClick, onEditClick, onFulfillClick, onDesignClick, onImageClick, isMobile } = data;
+    const row = items[index];
+    const hasAttentionNote = row.some((cell: any) =>
+        cell &&
+        typeof cell === 'object' &&
+        (cell.type === 'ordernote' || cell.type === 'ffnote') &&
+        String(cell.value || '').trim().length > 0
+    );
+    const cardClass = hasAttentionNote
+        ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700';
     const findIdx = (name: string) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
 
     const imageIndex = findIdx('Image');
-    const hasProductImage = imageIndex !== -1;
+    // No Image column (Order List shows per-item images instead) → fall back to
+    // the first item's image from the items cell so the card layout survives.
+    const productCellEarly: any = (() => {
+        const pi = findIdx('Product Name');
+        return pi !== -1 ? row[pi] : null;
+    })();
+    const itemsImage = productCellEarly && typeof productCellEarly === 'object' && productCellEarly.type === 'items' && productCellEarly.items?.[0]?.image
+        ? { type: 'image', src: productCellEarly.items[0].image, fullSrc: productCellEarly.items[0].fullImage || productCellEarly.items[0].image, alt: productCellEarly.items[0].name }
+        : null;
+    const hasProductImage = imageIndex !== -1 || !!itemsImage;
 
     const actionIndex = findIdx('Actions') !== -1 ? findIdx('Actions') : findIdx('Details');
     const actions = actionIndex !== -1 ? row[actionIndex] : null;
@@ -110,10 +189,18 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
         const orderIdIndex = findIdx('Order Number') !== -1 ? findIdx('Order Number') : findIdx('Order ID');
         const dateTimeIndex = headers.indexOf('DateTime'); // Find DateTime header index
 
-        const imageCell = row[imageIndex];
+        const imageCell = imageIndex !== -1 ? row[imageIndex] : itemsImage;
         const productValue = productIndex !== -1 ? row[productIndex] : 'N/A';
-        const orderIdValue = orderIdIndex !== -1 ? row[orderIdIndex] : 'N/A';
-        const dateTimeValue = dateTimeIndex !== -1 ? row[dateTimeIndex] : null; // Get DateTime value
+        const orderMeta = orderIdIndex !== -1 && row[orderIdIndex] && typeof row[orderIdIndex] === 'object' && (row[orderIdIndex] as any).type === 'order_meta'
+            ? row[orderIdIndex] as any
+            : null;
+        const orderIdValue = orderMeta?.orderId ?? (orderIdIndex !== -1 ? row[orderIdIndex] : 'N/A');
+        const dateTimeValue = orderMeta?.dateTime ?? (dateTimeIndex !== -1 ? row[dateTimeIndex] : null); // Get DateTime value
+        const sourceValue = orderMeta?.source ?? null;
+        const designItems = productValue && typeof productValue === 'object' && productValue.type === 'items'
+            ? (productValue.items || [])
+            : [];
+        const skuItems = designItems.map((it: any) => it.sku).filter(Boolean);
 
         const currencyIndex = findIdx('Currency');
         const specialIndexes = new Set([imageIndex, productIndex, orderIdIndex, actionIndex, dateTimeIndex, currencyIndex]);
@@ -121,11 +208,11 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
             .map((h, i) => {
                 if (specialIndexes.has(i) || h === 'DateTime') return null;
                 let val = row[i];
-                if (h === 'Cost' && (val === null || val === '-' || val === '')) {
+                if ((h === 'Cost' || h === 'FF Cost' || h === 'DS Cost' || h === 'Profit') && (val === null || val === '-' || val === '')) {
                     val = 0;
                 }
 
-                if (val === null || val === '-' || val === '' || (val === 0 && !h.toLowerCase().includes('count') && h !== 'Cost')) return null;
+                if (val === null || val === '-' || val === '' || (val === 0 && !h.toLowerCase().includes('count') && h !== 'Cost' && h !== 'FF Cost' && h !== 'DS Cost' && h !== 'Profit')) return null;
 
                 // Merge Currency into Revenue
                 if (h === 'Revenue' && currencyIndex !== -1) {
@@ -133,6 +220,14 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                     if (currency) {
                         return { h, val: `${renderTextContent(val)} ${currency}`, i, isMoney: true };
                     }
+                }
+
+                if (h === 'FF Code' && typeof val === 'string') {
+                    return { h, val: ffFactoryName(val), i };
+                }
+
+                if (val && typeof val === 'object' && (val.type === 'ordernote' || val.type === 'ffnote')) {
+                    return { h, val, i };
                 }
 
                 return { h, val, i };
@@ -144,7 +239,7 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
 
         return (
             <div style={{ ...style, willChange: 'transform' }} className="px-4 py-2">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 h-full flex flex-col justify-between">
+                <div className={`${cardClass} rounded-lg shadow-sm border p-4 h-full flex flex-col justify-between`}>
                     <div className="flex gap-4 mb-3 items-start">
                         {imageCell?.src ? (
                             <CachedImage src={imageCell.src} alt={imageCell.alt} onClick={() => imageCell.fullSrc && onImageClick(imageCell.fullSrc)} className="w-[85px] h-[85px] min-w-[85px] flex-shrink-0 object-cover rounded-md border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-105 transition-transform" />
@@ -153,9 +248,14 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                         )}
                         <div className="flex-grow min-w-0">
                             <div className="pb-1">
-                                {orderIdIndex !== -1 && (
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">Order #{orderIdValue}</span>
-                                )}
+	                                {orderIdIndex !== -1 && (
+	                                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">Order #{renderTextContent(orderIdValue)}</span>
+	                                )}
+	                                {sourceValue && (
+	                                    <span className="ml-2 rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-600 dark:text-gray-300">
+	                                        {renderTextContent(sourceValue)}
+	                                    </span>
+	                                )}
                                 <h4
                                     className={`text-base font-bold text-gray-900 dark:text-white leading-tight mt-0.5 truncate ${viewId ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
                                     title={String(productValue)}
@@ -165,6 +265,30 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                                 </h4>
                                 {dateTimeValue && (
                                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{renderTextContent(dateTimeValue)}</p>
+                                )}
+                                {skuItems.length > 0 && (
+                                    <div className="mt-1 flex flex-wrap gap-1">
+                                        {skuItems.slice(0, 3).map((sku: string, i: number) => (
+                                            <span key={`${sku}-${i}`} className="rounded bg-pink-50 dark:bg-pink-900/25 px-1.5 py-0.5 text-[11px] font-semibold text-pink-700 dark:text-pink-300">
+                                                SKU: {sku}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                {designItems.length > 0 && (
+                                    <div className="mt-1 flex flex-wrap gap-1.5">
+                                        {designItems.slice(0, 3).map((it: any, i: number) => (
+                                            <React.Fragment key={`${it.designProductName || it.name}-${i}`}>
+                                                <span className={Number(it.quantity || 0) > 1
+                                                    ? 'inline-flex rounded bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 text-[11px] font-extrabold leading-4 text-red-700 dark:text-red-300'
+                                                    : 'inline-flex rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-[11px] font-semibold leading-4 text-gray-600 dark:text-gray-300'}
+                                                >
+                                                    x{it.quantity || 1}
+                                                </span>
+                                                <ItemDesignButton productName={it.designProductName || it.name} recordId={it.designRecordId} designItemKey={it.designItemKey} hasDesign={it.hasDesign} hasDesignFiles={it.hasDesignFiles} designFileCount={it.designFileCount} onDesignClick={onDesignClick} />
+                                            </React.Fragment>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -176,14 +300,52 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                             return (
                                 <div key={item.i} className="flex flex-col min-w-0">
                                     <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate" title={item.h}>{item.h}</span>
-                                    <span className={`text-sm truncate ${valueClass}`}>{item.isMoney ? item.val : renderTextContent(item.val)}</span>
+                                    {item.val && typeof item.val === 'object' && item.val.type === 'status' ? (
+                                        <div>
+                                            <OrderStatusSelect
+                                                id={item.val.id}
+                                                value={item.val.value}
+                                                disabled={statusUpdating?.has(item.val.id)}
+                                                onChange={onStatusChange}
+                                            />
+                                        </div>
+                                    ) : item.val && typeof item.val === 'object' && item.val.type === 'support' ? (
+                                        <div className="text-xs leading-4 text-gray-700 dark:text-gray-300 space-y-0.5">
+                                            <p>Case: {item.val.case}</p>
+                                            <p>Help: {item.val.help}</p>
+                                            <p>Msg: {item.val.msg}</p>
+                                        </div>
+                                    ) : item.val && typeof item.val === 'object' && item.val.type === 'tracking' ? (
+                                        <button
+                                            onClick={() => onTrackingClick && onTrackingClick(item.val.id, item.val.value)}
+                                            className={item.val.value
+                                                ? 'text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium truncate text-left'
+                                                : 'self-start px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-xs font-semibold'}
+                                        >
+                                            {item.val.value || 'Add'}
+                                        </button>
+                                    ) : item.val && typeof item.val === 'object' && (item.val.type === 'ordernote' || item.val.type === 'ffnote') ? (
+                                        <button
+                                            onClick={() => {
+                                                const clickHandler = item.val.type === 'ordernote' ? onOrderNoteClick : onFfNoteClick;
+                                                clickHandler && clickHandler(item.val.id, item.val.value);
+                                            }}
+                                            className={item.val.value
+                                                ? 'text-left text-sm px-2 py-0.5 rounded bg-red-50 dark:bg-red-900/25 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 font-semibold truncate'
+                                                : 'self-start px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-xs font-semibold'}
+                                        >
+                                            {item.val.value || 'Add'}
+                                        </button>
+                                    ) : (
+                                        <span className={`text-sm truncate ${valueClass}`}>{item.isMoney ? item.val : renderTextContent(item.val)}</span>
+                                    )}
                                 </div>
                             )
                         })}
                     </div>
                     {actions && (
                         <div className="pt-2 border-t border-gray-100 dark:border-gray-700 mt-auto flex justify-end flex-wrap gap-2">
-                            {renderActionCell(actions, actionIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, isMobile)}
+                            {renderActionCell(actions, actionIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, isMobile, onFulfillClick, onEditClick, onDesignClick)}
                         </div>
                     )}
                 </div>
@@ -206,7 +368,7 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
 
         return (
             <div style={{ ...style, willChange: 'transform' }} className="px-4 py-2">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 h-full flex flex-col">
+                <div className={`${cardClass} rounded-lg shadow-sm border p-4 h-full flex flex-col`}>
                     {/* Header */}
                     <div className="flex justify-between items-start mb-3">
                         <span className="text-sm font-bold text-gray-900 dark:text-white">
@@ -260,7 +422,7 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
         return (
 
             <div style={{ ...style, willChange: 'transform' }} className="px-2 py-1.5 has-mobile-card">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-3 h-full flex flex-col justify-between">
+                <div className={`${cardClass} rounded-lg shadow-sm border p-3 h-full flex flex-col justify-between`}>
                     <div className="flex justify-between items-start mb-2 border-b border-gray-100 dark:border-gray-700 pb-2">
                         <div className="w-full">
                             <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">{titleHeader}</span>
@@ -284,7 +446,7 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                     </div>
                     {actions && (
                         <div className="pt-2 border-t border-gray-100 dark:border-gray-700 mt-auto flex justify-end flex-wrap gap-2">
-                            {renderActionCell(actions, actionIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, isMobile)}
+                            {renderActionCell(actions, actionIndex, loadingItems, onResyncClick, onViewOrderDetails, onViewDayDetails, row, isMobile, onFulfillClick, onEditClick, onDesignClick)}
                         </div>
                     )}
                 </div>

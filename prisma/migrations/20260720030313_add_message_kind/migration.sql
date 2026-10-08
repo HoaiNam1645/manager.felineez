@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Record` MODIFY `kind` ENUM('ORDER', 'FUNDS', 'CASE', 'HELP', 'MESSAGE') NOT NULL;

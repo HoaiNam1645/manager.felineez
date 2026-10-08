@@ -1,0 +1,1 @@
+ALTER TABLE `Record` ADD COLUMN `designCost` DECIMAL(18, 4) NULL;

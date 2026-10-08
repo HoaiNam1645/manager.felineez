@@ -20,7 +20,8 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
-        registerType: 'prompt', // Changed from autoUpdate to prevent reload loop
+        selfDestroying: true,
+        injectRegister: false,
         devOptions: {
           enabled: false, // Disable in development to prevent MIME type errors
         },
@@ -51,76 +52,6 @@ export default defineConfig(({ mode }) => {
             }
           ]
         },
-        workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-          maximumFileSizeToCacheInBytes: 4000000,
-          // IMPORTANT: Disable skipWaiting to prevent reload loop!
-          // With skipWaiting:true + autoUpdate, new SW immediately takes over
-          // and triggers reload, creating an infinite loop in production
-          skipWaiting: false, // Changed from true to prevent reload loop
-          clientsClaim: true,
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/i\.etsystatic\.com\/.*/,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'etsy-images',
-                expiration: {
-                  maxEntries: 200,
-                  maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-            {
-              urlPattern: /^https:\/\/i\.ebayimg\.com\/.*/,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'ebay-images',
-                expiration: {
-                  maxEntries: 100, // eBay images might be less common
-                  maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-            // Cache CDN modules (recharts, react, etc.)
-            {
-              urlPattern: /^https:\/\/aistudiocdn\.com\/.*/,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'cdn-modules',
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 7 * 24 * 60 * 60, // 7 Days
-                },
-                networkTimeoutSeconds: 10,
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-            {
-              urlPattern: /^https:\/\/esm\.sh\/.*/,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'esm-modules',
-                expiration: {
-                  maxEntries: 30,
-                  maxAgeSeconds: 7 * 24 * 60 * 60, // 7 Days
-                },
-                networkTimeoutSeconds: 10,
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-          ],
-        }
       }),
       // Bundle analyzer (only in build mode)
       mode === 'production' && visualizer({

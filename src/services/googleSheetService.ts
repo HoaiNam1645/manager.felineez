@@ -182,12 +182,21 @@ const analyzeSheetStructure = (
  * Check which orders are new vs already exist in the sheet
  * Returns {newOrders, existingOrders}
  */
+
+/** Accepts a raw spreadsheet ID or a full docs.google.com URL and returns the ID. */
+export const extractSheetId = (input: string): string => {
+    const m = String(input || '').match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    return m ? m[1] : String(input || '').trim();
+};
+
 export const getNewAndExistingOrders = async (
     spreadsheetId: string,
     sheetName: string,
     records: Record[],
     accessToken: string
-): Promise<{ newOrders: Record[]; existingOrders: Record[] }> => {
+): Promise<{
+    newOrders: Record[]; existingOrders: Record[] }> => {
+    spreadsheetId = extractSheetId(spreadsheetId);
     try {
         // Read existing data
         const allRows = await readExistingSheetData(spreadsheetId, sheetName, accessToken);
@@ -314,7 +323,7 @@ const syncBatchToSpecificSheet = async (
                     // Variant: 150px (1.5x)
                     {
                         updateDimensionProperties: {
-                            range: { sheetId: sheetIdNum, dimension: 'COLUMNS', startIndex: 13, endIndex: 14 },
+                            range: { sheetId: sheetIdNum, dimension: 'COLUMNS', startIndex: 14, endIndex: 15 },
                             properties: { pixelSize: 150 },
                             fields: 'pixelSize'
                         }
@@ -404,10 +413,18 @@ const syncBatchToSpecificSheet = async (
                 record.details.shippingAddress.address1,
                 record.details.shippingAddress.address2,
                 `${record.details.shippingAddress.city}, ${record.details.shippingAddress.state} ${record.details.shippingAddress.zip}`,
-                record.details.shippingAddress.country
+                record.details.shippingAddress.country,
+                record.details.customerEmail || ''
             ].filter(Boolean).join('\n')
-            : '';
-        const revenue = record.amount || 0;
+            : (record.details?.customerEmail || '');
+        // Buyer note (order-level) + shipped date from the imported Etsy CSV
+        const buyerMessage = (record.details as any)?.buyerMessage || '';
+        const shippedDate = (record as any).etsy_fees?.dateShipped || '';
+        // Fulfillment status stored on the record (NEW/DESIGNING/READY/PRODUCING/SHIPPED/ON_HOLD/CANCELLED)
+        const orderStatus = (record as any).order_status || '';
+        // Actual money received (Etsy "You earned", estimated by the fee engine)
+        const actualNet = (record as any).etsy_fees?.estActualNet ?? '';
+        const revenue = orderStatus === 'REFUND' ? 0 : (record.amount || 0);
         const baseCost = record.cost_total || 0;
 
         const itemsToProcess = (record.details?.items && record.details.items.length > 0)
@@ -416,7 +433,7 @@ const syncBatchToSpecificSheet = async (
 
         const orderRows: any[][] = [];
 
-        itemsToProcess.forEach((item: any) => {
+        itemsToProcess.forEach((item: any, itemIdx: number) => {
             const productName = item.name || '';
             const mockup = item.image || '';
             // Filter out "Personalised item" from variant
@@ -443,16 +460,31 @@ const syncBatchToSpecificSheet = async (
                 if (h.includes('date') || h.includes('ngày') || h.includes('ngay')) return dateKey;
                 // Order ID (Order number)
                 if (h.includes('order id') || h.includes('order number')) return record.order_id;
-                // Tracking
-                if (h.includes('tracking')) return '';
+                // Tracking (from the record's trackingCode, entered in Order List)
+                if (h.includes('tracking')) return (record as any).tracking_code || '';
                 // Customer Info (Tên,SĐT, địa chỉ khách)
                 if (h.includes('customer') || h.includes('khách')) return customerInfo;
                 // Revenue
                 if (h.includes('revenue')) return revenue;
+                // Net (tiền thực nhận sau phí Etsy — cần import CSV)
+                if (h === 'net' || h.includes('thực nhận')) return actualNet;
                 // Base Cost (Basecost)
                 if (h.includes('base cost') || h.includes('basecost')) return baseCost;
                 // Variant (File ff)
                 if (h.includes('variant') || h.includes('file ff')) return variant;
+                // Requirements: per-item personalization + buyer note (first row only)
+                if (h.includes('requirement') || h.includes('yêu cầu') || h.includes('yeu cau')) {
+                    const parts = [];
+                    if (item.personalization) parts.push(String(item.personalization).trim());
+                    if (itemIdx === 0 && buyerMessage) parts.push(`Note: ${buyerMessage}`);
+                    return parts.join('\n');
+                }
+                // Order Status: the record's fulfillment status (+ shipped date when SHIPPED)
+                if (h.includes('order status')) {
+                    if (orderStatus === 'SHIPPED' && shippedDate) return `SHIPPED ${shippedDate}`;
+                    if (orderStatus) return orderStatus;
+                    return shippedDate ? `Shipped ${shippedDate}` : '';
+                }
                 return '';
             });
 
@@ -663,7 +695,9 @@ export const syncRecordsToGoogleSheet = async (
     account: Account,
     allAccounts: Account[] = [],
     _timeZone: string // Ignored, we use UTC-7
-): Promise<{ success: boolean; message: string; count?: number }> => {
+): Promise<{
+    success: boolean; message: string; count?: number }> => {
+    sheetId = extractSheetId(sheetId);
     try {
         if (!records.length) {
             return { success: true, message: 'No records to sync.' };

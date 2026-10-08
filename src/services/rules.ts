@@ -5,7 +5,7 @@ import { getHighResImageUrl } from '../utils/imageUtils.js';
 export interface Rule {
   name: string;
   query: string;
-  kind?: 'order' | 'Funds' | 'case' | 'help';
+  kind?: 'order' | 'Funds' | 'case' | 'help' | 'message';
   platform?: 'etsy' | 'ebay';
   amountOrderRe?: RegExp;
   currencyDefaultIfMissing?: string;
@@ -25,7 +25,7 @@ export const RULES: Rule[] = [
   {
     name: "Etsy_Sales",
     platform: "etsy",
-    query: 'subject:"You made a sale on Etsy"',
+    query: '{subject:"You made a sale on Etsy" subject:"congrats on your first sale"}',
     // Kiểm tra body chứa "Order total" để validate là sales email thực
     amountOrderRe: new RegExp(
       `Order\\s+total\\s*:?\\s*[$£€]?\\s*(${AMOUNT_BIG})`,
@@ -110,6 +110,22 @@ export const RULES: Rule[] = [
     // Dutch:   "Je hebt hulp nodig met: ..."
     bodyHelpTypeRe: new RegExp(
       `\\b(?:You\\s+need\\s+help\\s+with|Je\\s+hebt\\s+hulp\\s+nodig\\s+met)\\s*:?\\s*(?<kind>[^<\\n]+)`,
+      "i"
+    ),
+  },
+
+  // ==================== ETSY MESSAGE (Conversation) ====================
+  // Email chỉ là notification "X sent you a message" — KHÔNG chứa nội dung tin
+  // nhắn, nên chỉ parse được tên khách + order id (nếu có) từ subject.
+  // "Re: Etsy Conversation with Itzel Diaz about Order #4117105098"
+  // "Etsy Conversation with Tree Story Handmade from TreeStoryHandmade"
+  {
+    name: "Etsy_Message",
+    kind: "message",
+    platform: "etsy",
+    query: 'from:no-reply@account.etsy.com subject:"Etsy Conversation with"',
+    amountOrderRe: new RegExp(
+      `Etsy\\s+Conversation\\s+with\\s+(?<cust>.+?)(?:\\s+from\\s+(?<shop>\\S+))?(?:\\s+about\\s+Order\\s*#\\s*(?<oid>\\d+))?\\s*$`,
       "i"
     ),
   },
@@ -384,6 +400,61 @@ const detectCurrencyFromPrefix = (prefix: string): string => {
   return "USD";
 };
 
+const parseMoneyToken = (value?: string): number => {
+  if (!value) return 0;
+  const m = value.match(/([0-9][\d,]*(?:\.\d{1,2})?)/);
+  return m ? parseFloat(m[1].replace(/,/g, '')) : 0;
+};
+
+const extractFirstSaleTextItem = (html: string): OrderItem | null => {
+  const text = stripHtmlBasic(html);
+  if (!/congratulations\s+on\s+your\s+first\s+sale|Order\s+details/i.test(text)) return null;
+
+  const sectionMatch = text.match(/Order\s+details[\s\S]*?(?=Item\s+total\s*:|Buyer\s+details|Payment\s+method|Shipping\s+address|$)/i);
+  const section = sectionMatch ? sectionMatch[0] : text;
+  const lines = section
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const orderLineIdx = lines.findIndex((line) => /Order\s+number\s*:/i.test(line));
+  const txLineIdx = lines.findIndex((line) => /Transaction\s+ID\s*:/i.test(line));
+  const qtyLineIdx = lines.findIndex((line) => /^Quantity\s*:/i.test(line));
+
+  const titleStart = orderLineIdx >= 0 ? orderLineIdx + 1 : 0;
+  const titleStopCandidates = [txLineIdx, qtyLineIdx]
+    .filter((n) => n > titleStart);
+  const titleStop = titleStopCandidates.length ? Math.min(...titleStopCandidates) : lines.length;
+  const titleAndOptions = lines.slice(titleStart, titleStop)
+    .filter((line) => !/^Order\s+details/i.test(line) && !/^Order\s+number\s*:/i.test(line));
+  if (titleAndOptions.length === 0) return null;
+
+  const metaIdx = titleAndOptions.findIndex((line) =>
+    /^(Color|Colour|Size|Option|Style|Custom|Personalization|Personalized|Name|Text|Font)\s*:/i.test(line)
+  );
+  const title = (metaIdx > 0 ? titleAndOptions.slice(0, metaIdx) : [titleAndOptions[0]]).join(' ').trim();
+  const variantLines = (metaIdx >= 0 ? titleAndOptions.slice(metaIdx) : titleAndOptions.slice(1))
+    .filter((line) => !/^Can\s+I\s+see\s+a\s+preview/i.test(line));
+
+  const transactionId = (section.match(/Transaction\s+ID\s*:?\s*(\d+)/i) || [])[1] || '';
+  const quantity = parseInt((section.match(/Quantity\s*:?\s*(\d+)/i) || [])[1] || '1', 10);
+  const priceLine = lines.slice(qtyLineIdx >= 0 ? qtyLineIdx + 1 : 0).find((line) => /[$£€]\s*[\d,.]+/.test(line));
+  const price = parseMoneyToken(priceLine);
+
+  const imageMatch = html.match(/https:\/\/i\.etsystatic\.com\/[^"'\s]+\/il\/[^"'\s<]+/i);
+  const image = imageMatch ? (getHighResImageUrl(imageMatch[0]) || imageMatch[0]) : '';
+
+  if (!title || !price) return null;
+  return {
+    name: title,
+    variant: variantLines.join('\n'),
+    quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+    price,
+    transactionId,
+    image,
+  };
+};
+
 // ==================== ETSY DETAIL EXTRACTION ====================
 
 const extractEtsyDetails = (html: string): OrderDetails => {
@@ -465,6 +536,7 @@ const extractEtsyDetails = (html: string): OrderDetails => {
   // 3. Extract Items (Unified Logic for Outlook & Gmail)
   // ==================== 3. EXTRACT ITEMS (FIXED FOR GMAIL + OUTLOOK) ====================
   const items: OrderItem[] = [];
+  let shopName = ""; // captured from the "Shop:" line inside item blocks
 
   // Lấy từng block avatar-media-block giống Python
   const blockRegex =
@@ -485,6 +557,17 @@ const extractEtsyDetails = (html: string): OrderDetails => {
     let title = "Unknown Item";
     if (divTexts.length > 0) {
       title = divTexts[0];
+    }
+
+    // Capture shop name from the "Shop: <name>" line (first one wins)
+    if (!shopName) {
+      for (const line of divTexts) {
+        const sm = line.match(/^Shop:\s*(.+)$/i);
+        if (sm && sm[1].trim()) {
+          shopName = sm[1].trim();
+          break;
+        }
+      }
     }
 
     // ===== 2) Lọc variant: các div còn lại, loại Shop/Transaction/Quantity/Price/noise =====
@@ -556,6 +639,11 @@ const extractEtsyDetails = (html: string): OrderDetails => {
     });
   });
 
+  if (items.length === 0) {
+    const fallbackItem = extractFirstSaleTextItem(html);
+    if (fallbackItem) items.push(fallbackItem);
+  }
+
 
 
   // 4. Extract Financials (Case Insensitive)
@@ -586,13 +674,24 @@ const extractEtsyDetails = (html: string): OrderDetails => {
     detectedCurrency = detectCurrencyFromPrefix(orderTotalMatch[1]);
   }
 
+  // --- 6. Buyer message / note (optional; section title varies) ---
+  let buyerMessage = "";
+  const buyerMsgMatch = html.match(
+    /(?:A message from the buyer|Note from buyer|Message from buyer|Buyer'?s? note)[\s\S]*?<(?:h2|h3|td|div)[^>]*>[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/i,
+  );
+  if (buyerMsgMatch) {
+    buyerMessage = stripHtmlBasic(buyerMsgMatch[1]).trim();
+  }
+
   return {
     customerName,
     customerEmail,
     shippingAddress,
     items,
     financials,
-    detectedCurrency // Trả về để hàm parseMessage sử dụng
+    detectedCurrency, // Trả về để hàm parseMessage sử dụng
+    shopName: shopName || undefined,
+    buyerMessage: buyerMessage || undefined,
   };
 };
 
@@ -605,6 +704,21 @@ export const parseMessage = (
   body: string
 ): Partial<Record> | null => {
   const kind = rule.kind || 'order';
+
+  // ====== ETSY MESSAGE (Conversation notification) ======
+  if (rule.name === 'Etsy_Message') {
+    const m = subject.match(rule.amountOrderRe!);
+    if (!m) return null;
+    const cust = (m.groups?.cust || '').trim();
+    const order_id = (m.groups?.oid || '').trim() || null;
+    return {
+      amount: 0.0,
+      order_id,
+      currency: null,
+      kind: 'message',
+      case_msg: cust ? `${cust} sent you a message` : 'Buyer sent you a message',
+    };
+  }
 
   // ====== RULE KHÔNG CÓ amountOrderRe (Etsy_Help) ======
   if (!rule.amountOrderRe) {
