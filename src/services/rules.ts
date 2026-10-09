@@ -25,7 +25,7 @@ export const RULES: Rule[] = [
   {
     name: "Etsy_Sales",
     platform: "etsy",
-    query: '{subject:"You made a sale on Etsy" subject:"congrats on your first sale"}',
+    query: '{subject:"You made a sale on Etsy" subject:"congrats on your first sale" subject:"Etsy Order confirmation"}',
     // Kiểm tra body chứa "Order total" để validate là sales email thực
     amountOrderRe: new RegExp(
       `Order\\s+total\\s*:?\\s*[$£€]?\\s*(${AMOUNT_BIG})`,
@@ -408,7 +408,7 @@ const parseMoneyToken = (value?: string): number => {
 
 const extractFirstSaleTextItem = (html: string): OrderItem | null => {
   const text = stripHtmlBasic(html);
-  if (!/congratulations\s+on\s+your\s+first\s+sale|Order\s+details/i.test(text)) return null;
+  if (!/congratulations\s+on\s+your\s+(?:first\s+)?etsy\s+sale|Order\s+details/i.test(text)) return null;
 
   const sectionMatch = text.match(/Order\s+details[\s\S]*?(?=Item\s+total\s*:|Buyer\s+details|Payment\s+method|Shipping\s+address|$)/i);
   const section = sectionMatch ? sectionMatch[0] : text;
