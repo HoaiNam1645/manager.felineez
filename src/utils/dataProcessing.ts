@@ -386,7 +386,7 @@ const calculateOverview = (
 }
 
 const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, timeZone: string): TableData => {
-    const headers = ["Order ID", "Image", "Product Name", "Variants", "Revenue", "Currency", "FF Cost", "DS Cost", "Profit", "FF Code", "Status", "Tracking", "Note", "FF Note", "Support", "Account", "DateTime", "Source", "Actions"];
+    const headers = ["Order ID", "Image", "Product Name", "Variants", "Revenue", "Currency", "FF Cost", "DS Cost", "Refund", "Profit", "FF Code", "Status", "Tracking", "Note", "FF Note", "Support", "Account", "DateTime", "Source", "Actions"];
     const orders = records.filter(r => r.kind === 'order');
     const cases = records.filter(r => r.kind === 'case');
     const helps = records.filter(r => r.kind === 'help');
@@ -448,8 +448,9 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
         const moneyBase = getOrderNetForProfit(o);
         const ffCost = o.cost_total ?? null;
         const designCost = o.design_cost ?? null;
-        const totalCost = (ffCost ?? 0) + (designCost ?? 0);
-        const profit = (moneyBase != null && (ffCost != null || designCost != null))
+        const refundAmount = o.refund_amount ?? null;
+        const totalCost = (ffCost ?? 0) + (designCost ?? 0) + (refundAmount ?? 0);
+        const profit = (moneyBase != null && (ffCost != null || designCost != null || refundAmount != null))
             ? Math.round((moneyBase - totalCost) * 100) / 100
             : null;
 
@@ -487,6 +488,7 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
             o.currency || 'USD',
             ffCost,
             designCost,
+            refundAmount,
             profit,
             o.ff_code || '-',
             { type: 'status', id: o.id!, value: o.order_status || 'NEW' } as any,

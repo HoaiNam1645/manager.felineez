@@ -37,6 +37,7 @@ export interface SellerKpiRow {
   net: number;
   ffCost: number;
   designCost: number;
+  refund: number;
   profit: number;
 }
 
@@ -50,6 +51,7 @@ export interface TeamKpiRow {
   net: number;
   ffCost: number;
   designCost: number;
+  refund: number;
   profit: number;
 }
 
@@ -60,6 +62,7 @@ export interface KpiTotals {
   net: number;
   ffCost: number;
   designCost: number;
+  refund: number;
   profit: number;
   unattributedOrders: number; // noSku + fully-unknown
   totalOrders: number;        // all Etsy orders in range
@@ -211,7 +214,7 @@ export function computeKpi({ records, users, teams, timeZone, teamFilter, range 
       row = {
         userId: u.id, email: u.email, role: u.role, codes: u.sellerCodes || [],
         teamId: u.sellerTeamId, teamName: teamName(u.sellerTeamId),
-        orders: 0, items: 0, revenue: 0, net: 0, ffCost: 0, designCost: 0, profit: 0, orderIds: new Set(),
+        orders: 0, items: 0, revenue: 0, net: 0, ffCost: 0, designCost: 0, refund: 0, profit: 0, orderIds: new Set(),
       };
       sellerAgg.set(u.id, row);
     }
@@ -230,6 +233,7 @@ export function computeKpi({ records, users, teams, timeZone, teamFilter, range 
   let netSum = 0;
   let ffCostSum = 0;
   let designCostSum = 0;
+  let refundSum = 0;
   let profitSum = 0;
   let currency = 'USD';
 
@@ -281,8 +285,9 @@ export function computeKpi({ records, users, teams, timeZone, teamFilter, range 
     const orderTotal = orderTotalForFeeEstimate(r, fees);
     const orderFfCost = r.cost_total != null ? num(r.cost_total) : 0;
     const orderDesignCost = r.design_cost != null ? num(r.design_cost) : 0;
+    const orderRefund = (r as any).refund_amount != null ? num((r as any).refund_amount) : 0;
     const orderNet = orderNetForKpi(r, fees);
-    const orderProfit = orderNet - orderFfCost - orderDesignCost;
+    const orderProfit = orderNet - orderFfCost - orderDesignCost - orderRefund;
     const totalSkus = skus.length;
     const day = bucketOf(dayOf(r.dt_local, timeZone), granularity);
 
@@ -300,6 +305,7 @@ export function computeKpi({ records, users, teams, timeZone, teamFilter, range 
       row.net += orderNet * share;
       row.ffCost += orderFfCost * share;
       row.designCost += orderDesignCost * share;
+      row.refund += orderRefund * share;
       row.profit += orderProfit * share;
 
       // Daily stacking key: team when viewing All, seller email otherwise.
@@ -319,6 +325,7 @@ export function computeKpi({ records, users, teams, timeZone, teamFilter, range 
         netSum += orderNet * share;
         ffCostSum += orderFfCost * share;
         designCostSum += orderDesignCost * share;
+        refundSum += orderRefund * share;
         profitSum += orderProfit * share;
       });
     }
@@ -334,7 +341,7 @@ export function computeKpi({ records, users, teams, timeZone, teamFilter, range 
     const key = s.teamId ?? '__none__';
     let t = teamAgg.get(key);
     if (!t) {
-      t = { teamId: s.teamId, teamName: s.teamName, members: 0, orders: 0, items: 0, revenue: 0, net: 0, ffCost: 0, designCost: 0, profit: 0 };
+      t = { teamId: s.teamId, teamName: s.teamName, members: 0, orders: 0, items: 0, revenue: 0, net: 0, ffCost: 0, designCost: 0, refund: 0, profit: 0 };
       teamAgg.set(key, t);
     }
     t.members += 1;
@@ -344,6 +351,7 @@ export function computeKpi({ records, users, teams, timeZone, teamFilter, range 
     t.net += s.net;
     t.ffCost += s.ffCost;
     t.designCost += s.designCost;
+    t.refund += s.refund;
     t.profit += s.profit;
   });
   const teamRows = Array.from(teamAgg.values()).sort((a, b) => b.net - a.net);
@@ -375,6 +383,7 @@ export function computeKpi({ records, users, teams, timeZone, teamFilter, range 
       net: Math.round(netSum * 100) / 100,
       ffCost: Math.round(ffCostSum * 100) / 100,
       designCost: Math.round(designCostSum * 100) / 100,
+      refund: Math.round(refundSum * 100) / 100,
       profit: Math.round(profitSum * 100) / 100,
       unattributedOrders: noSku + unknownOnly,
       totalOrders,

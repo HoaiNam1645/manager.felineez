@@ -133,6 +133,7 @@ model Record {
   helpKind     String?
   costTotal    Decimal?   @db.Decimal(18, 4)
   designCost   Decimal?   @db.Decimal(18, 4)
+  refundAmount Decimal?   @db.Decimal(18, 4)
   ffCode       String?
   // Fulfillment pipeline: NEW → DESIGNING → READY → PRODUCING → SHIPPED (+ ON_HOLD / CANCELLED)
   orderStatus  String?    @db.VarChar(16)

@@ -67,6 +67,7 @@ export interface Record {
   help_kind?: string | null;
   cost_total?: number;
   design_cost?: number;
+  refund_amount?: number;
   ff_code?: string;
   order_status?: string; // Fulfillment pipeline: NEW/DESIGNING/READY/PRODUCING/SHIPPED/ON_HOLD/CANCELLED
   tracking_code?: string;

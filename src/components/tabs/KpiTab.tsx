@@ -133,13 +133,14 @@ const KpiTab: React.FC = () => {
             {kpi && (
                 <>
                     {/* KPI cards (system component for visual consistency) */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 md:gap-4 mb-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-9 gap-3 md:gap-4 mb-6">
                         <KpiCard title="Total Orders" value={{ value: kpi.totals.attributedOrders.toLocaleString() }} />
                         <KpiCard title="Items Sold" value={{ value: kpi.totals.attributedItems.toLocaleString() }} />
                         <KpiCard title="Revenue" value={{ value: `${money(kpi.totals.revenue)} ${kpi.currency}` }} />
                         <KpiCard title="Net Received" value={{ value: `${money(kpi.totals.net)} ${kpi.currency}` }} />
                         <KpiCard title="FF Cost" value={{ value: `${money(kpi.totals.ffCost)} USD` }} />
                         <KpiCard title="DS Cost" value={{ value: `${money(kpi.totals.designCost || 0)} USD` }} />
+                        <KpiCard title="Refund" value={{ value: `${money(kpi.totals.refund || 0)} USD` }} />
                         <KpiCard title="Profit" value={{ value: `${money(kpi.totals.profit)} ${kpi.currency}` }} />
                         <KpiCard title="Attribution" value={{ value: `${kpi.totals.attributionRate}%` }} />
                     </div>
@@ -245,6 +246,7 @@ const KpiTab: React.FC = () => {
                                                         <div className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">Net ${money(s.net)}</div>
                                                         <div className="mt-1 font-semibold text-rose-600 dark:text-rose-400">FF ${money(s.ffCost)}</div>
                                                         <div className="mt-1 font-semibold text-fuchsia-600 dark:text-fuchsia-400">DS ${money(s.designCost || 0)}</div>
+                                                        <div className="mt-1 font-semibold text-red-600 dark:text-red-400">Refund ${money(s.refund || 0)}</div>
                                                         <div className={`mt-1 font-semibold ${s.profit >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>Profit ${money(s.profit)}</div>
                                                     </td>
                                                     <td className={`${tdCls} text-right tabular-nums text-gray-500 dark:text-gray-400 whitespace-nowrap`}>
@@ -289,6 +291,7 @@ const KpiTab: React.FC = () => {
                                                             <div className="font-semibold text-emerald-600 dark:text-emerald-400">Net ${money(t.net)}</div>
                                                             <div className="mt-1 font-semibold text-rose-600 dark:text-rose-400">FF ${money(t.ffCost)}</div>
                                                             <div className="mt-1 font-semibold text-fuchsia-600 dark:text-fuchsia-400">DS ${money(t.designCost || 0)}</div>
+                                                            <div className="mt-1 font-semibold text-red-600 dark:text-red-400">Refund ${money(t.refund || 0)}</div>
                                                             <div className={`mt-1 font-semibold ${t.profit >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>Profit ${money(t.profit)}</div>
                                                         </td>
                                                     </tr>

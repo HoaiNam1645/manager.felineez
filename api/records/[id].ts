@@ -37,6 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (b.source !== undefined) data.source = b.source;
       if (b.cost_total !== undefined || b.costTotal !== undefined) data.costTotal = b.cost_total !== undefined ? b.cost_total : b.costTotal;
       if (b.design_cost !== undefined || b.designCost !== undefined) data.designCost = b.design_cost !== undefined ? b.design_cost : b.designCost;
+      if (b.refund_amount !== undefined || b.refundAmount !== undefined) data.refundAmount = b.refund_amount !== undefined ? b.refund_amount : b.refundAmount;
       if (b.ff_code !== undefined || b.ffCode !== undefined) data.ffCode = b.ff_code !== undefined ? b.ff_code : b.ffCode;
       if (b.product_name !== undefined || b.productName !== undefined) data.productName = b.product_name ?? b.productName;
       if (b.details !== undefined) data.details = b.details;

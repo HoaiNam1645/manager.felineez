@@ -255,7 +255,7 @@ const DataTable: React.FC<DataTableProps> = ({ headers, data, onViewDayDetails, 
     // horizontally instead of crushing the cells.
     const MIN_COL_WIDTH: { [h: string]: number } = {
         'Stt': 64, 'Image': 95, 'Product Name': 420, 'Order ID': 150, 'Order Number': 150,
-        'Revenue': 90, 'Cost': 90, 'FF Cost': 90, 'DS Cost': 90, 'Profit': 90, 'Currency': 90,
+        'Revenue': 90, 'Cost': 90, 'FF Cost': 90, 'DS Cost': 90, 'Refund': 90, 'Profit': 90, 'Currency': 90,
         'Message': 250, 'Help Kind': 250,
         'FF Code': 110, 'Status': 140, 'Tracking': 110, 'Note': 150, 'FF Note': 150, 'Support': 130,
         'Actions': 315, 'DateTime': 115, 'Account': 120,
@@ -322,6 +322,7 @@ const DataTable: React.FC<DataTableProps> = ({ headers, data, onViewDayDetails, 
                             case 'Cost':
                             case 'FF Cost':
                             case 'DS Cost':
+                            case 'Refund':
                             case 'Profit':
                             case 'Currency':
                                 headerCellClass += 'flex-1 basis-[90px]';

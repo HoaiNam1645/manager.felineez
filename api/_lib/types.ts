@@ -64,6 +64,7 @@ export interface Record {
   help_kind?: string | null;
   cost_total?: number;
   design_cost?: number;
+  refund_amount?: number;
   ff_code?: string;
   product_name?: string;
   details?: OrderDetails; // Added detailed info

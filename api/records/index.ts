@@ -191,6 +191,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           helpKind: r.help_kind ?? r.helpKind ?? null,
           costTotal: r.cost_total ?? r.costTotal ?? null,
           designCost: r.design_cost ?? r.designCost ?? null,
+          refundAmount: r.refund_amount ?? r.refundAmount ?? null,
           ffCode: r.ff_code ?? r.ffCode ?? null,
           productName: r.product_name ?? r.productName ?? null,
           details: r.details ?? undefined,

@@ -165,6 +165,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
             amount: f.amount,
             cost_total: f.cost_total,
             design_cost: f.design_cost,
+            refund_amount: f.refund_amount,
             ff_code: f.ff_code || null,
             order_status: f.order_status,
             tracking_code: f.tracking_code || null,
@@ -176,6 +177,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
             amount: f.amount,
             cost_total: f.cost_total ?? undefined,
             design_cost: f.design_cost ?? undefined,
+            refund_amount: f.refund_amount ?? undefined,
             ff_code: f.ff_code || undefined,
             order_status: f.order_status,
             tracking_code: f.tracking_code || undefined,
@@ -235,7 +237,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
     const hiddenIndices = useMemo(() => {
         const hidden = new Set<number>();
         const names = ['Variants', 'Source', 'Currency', 'Image', 'Account', 'DateTime'];
-        if (role === 'design') names.push('Revenue', 'FF Cost', 'DS Cost', 'Profit');
+        if (role === 'design') names.push('Revenue', 'FF Cost', 'DS Cost', 'Refund', 'Profit');
         names.forEach(name => {
             const i = processedData.orders.headers.findIndex(h => h === name);
             if (i !== -1) hidden.add(i);

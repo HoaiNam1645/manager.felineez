@@ -235,6 +235,7 @@ const DesktopRow = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                     case 'Cost':
                     case 'FF Cost':
                     case 'DS Cost':
+                    case 'Refund':
                     case 'Profit':
                     case 'Currency':
                         cellClass += 'flex-1 basis-[90px]';
@@ -438,7 +439,7 @@ const DesktopRow = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                 }
 
                 // Factory fulfill cost: '-' until the cost-cron (or a webhook) fills it
-                if ((header === 'Cost' || header === 'FF Cost' || header === 'DS Cost' || header === 'Profit') && (cell === null || cell === undefined || cell === '')) {
+                if ((header === 'Cost' || header === 'FF Cost' || header === 'DS Cost' || header === 'Refund' || header === 'Profit') && (cell === null || cell === undefined || cell === '')) {
                     return (
                         <div key={cellIndex} className={cellClass} style={customStyle}>
                             <span className="truncate w-full text-gray-400 dark:text-gray-500">-</span>

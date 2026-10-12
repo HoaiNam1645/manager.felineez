@@ -33,6 +33,7 @@ export interface EditOrderFields {
     amount: number;
     cost_total: number | null;
     design_cost: number | null;
+    refund_amount: number | null;
     ff_code: string;
     order_status: string;
     tracking_code: string;
@@ -54,6 +55,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ record, onClose, onSave
     const [amount, setAmount] = useState(String(record.amount ?? ''));
     const [costTotal, setCostTotal] = useState(record.cost_total != null ? String(record.cost_total) : '');
     const [designCost, setDesignCost] = useState(record.design_cost != null ? String(record.design_cost) : '');
+    const [refundAmount, setRefundAmount] = useState(record.refund_amount != null ? String(record.refund_amount) : '');
     const [ffCode, setFfCode] = useState(record.ff_code || '');
     const [orderStatus, setOrderStatus] = useState(record.order_status === 'READY' ? 'NEW' : record.order_status || 'NEW');
     const [trackingCode, setTrackingCode] = useState(record.tracking_code || '');
@@ -68,6 +70,8 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ record, onClose, onSave
         if (costNum !== null && (!Number.isFinite(costNum) || costNum < 0)) return setError('FF Cost must be a valid number');
         const designCostNum = designCost.trim() === '' ? null : Number(designCost);
         if (designCostNum !== null && (!Number.isFinite(designCostNum) || designCostNum < 0)) return setError('Design Cost must be a valid number');
+        const refundNum = refundAmount.trim() === '' ? null : Number(refundAmount);
+        if (refundNum !== null && (!Number.isFinite(refundNum) || refundNum < 0)) return setError('Refund must be a valid number');
         if (!orderId.trim()) return setError('Order ID is required');
 
         setError(null);
@@ -79,6 +83,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ record, onClose, onSave
                 amount: amountNum,
                 cost_total: costNum,
                 design_cost: designCostNum,
+                refund_amount: refundNum,
                 ff_code: ffCode.trim(),
                 order_status: orderStatus,
                 tracking_code: trackingCode.trim(),
@@ -116,6 +121,10 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ record, onClose, onSave
                     <div className="col-span-3">
                         <label className={labelCls}>Design Cost</label>
                         <input type="number" step="0.01" min="0" value={designCost} onChange={e => setDesignCost(e.target.value)} placeholder="-" className={inputCls} />
+                    </div>
+                    <div className="col-span-3">
+                        <label className={labelCls}>Refund</label>
+                        <input type="number" step="0.01" min="0" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} placeholder="-" className={inputCls} />
                     </div>
                     <div className="col-span-3">
                         <label className={labelCls}>FF Code</label>

@@ -219,11 +219,11 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
             .map((h, i) => {
                 if (specialIndexes.has(i) || h === 'DateTime') return null;
                 let val = row[i];
-                if ((h === 'Cost' || h === 'FF Cost' || h === 'DS Cost' || h === 'Profit') && (val === null || val === '-' || val === '')) {
+                if ((h === 'Cost' || h === 'FF Cost' || h === 'DS Cost' || h === 'Refund' || h === 'Profit') && (val === null || val === '-' || val === '')) {
                     val = 0;
                 }
 
-                if (val === null || val === '-' || val === '' || (val === 0 && !h.toLowerCase().includes('count') && h !== 'Cost' && h !== 'FF Cost' && h !== 'DS Cost' && h !== 'Profit')) return null;
+                if (val === null || val === '-' || val === '' || (val === 0 && !h.toLowerCase().includes('count') && h !== 'Cost' && h !== 'FF Cost' && h !== 'DS Cost' && h !== 'Refund' && h !== 'Profit')) return null;
 
                 // Merge Currency into Revenue
                 if (h === 'Revenue' && currencyIndex !== -1) {
