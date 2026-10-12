@@ -18,8 +18,8 @@ const effectiveOrderAmount = (record: Record): number => isRefundedOrder(record)
 
 const getOrderTotalForFeeEstimate = (record: Record): number => {
     if (isRefundedOrder(record)) return 0;
-    return numericValue(record.details?.financials?.orderTotal)
-        ?? numericValue((record as any).etsy_fees?.orderTotal)
+    return numericValue((record as any).etsy_fees?.orderTotal)
+        ?? numericValue(record.details?.financials?.orderTotal)
         ?? numericValue(record.amount)
         ?? 0;
 };
@@ -27,21 +27,20 @@ const getOrderTotalForFeeEstimate = (record: Record): number => {
 const getOrderNetForProfit = (record: Record): number => {
     if (isRefundedOrder(record)) return 0;
     const fees = (record as any).etsy_fees;
-    const orderTotal = getOrderTotalForFeeEstimate(record);
     const estActualNet = numericValue(fees?.estActualNet);
-    if (estActualNet !== null && estActualNet <= orderTotal) return roundMoney(estActualNet);
+    if (estActualNet !== null) return roundMoney(estActualNet);
 
+    const orderTotal = numericValue(fees?.orderTotal) ?? getOrderTotalForFeeEstimate(record);
     const rawNet = numericValue(fees?.orderNet);
     if (rawNet !== null && rawNet > 0) {
         const rawFees = numericValue(fees?.cardFees) ?? 0;
-        const adjustedNet = rawNet > orderTotal && rawNet + rawFees > 0
+        return rawNet > orderTotal && rawNet + rawFees > 0
             ? roundMoney((orderTotal * rawNet) / (rawNet + rawFees))
             : roundMoney(rawNet);
-        if (adjustedNet <= orderTotal) return adjustedNet;
     }
 
     if (record.source === 'Etsy_Sales') {
-        return roundMoney(orderTotal * (1 - ETSY_FALLBACK_FEE_RATE));
+        return roundMoney(getOrderTotalForFeeEstimate(record) * (1 - ETSY_FALLBACK_FEE_RATE));
     }
 
     return roundMoney(effectiveOrderAmount(record));

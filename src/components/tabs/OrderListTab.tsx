@@ -160,7 +160,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
     const handleSaveEdit = async (recordId: string, f: EditOrderFields) => {
         const rec = allRecords.find(r => r.id === recordId);
         const details = syncDetailsRevenue(rec?.details, f.amount, f.customer_name);
-        const updated = await updateOrderFields(recordId, {
+        await updateOrderFields(recordId, {
             order_id: f.order_id,
             amount: f.amount,
             cost_total: f.cost_total,
@@ -170,7 +170,17 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
             tracking_code: f.tracking_code || null,
             ...(details ? { details } : {}),
         });
-        setRecords(prev => prev.map(r => r.id === recordId ? updated : r));
+        setRecords(prev => prev.map(r => r.id === recordId ? {
+            ...r,
+            order_id: f.order_id,
+            amount: f.amount,
+            cost_total: f.cost_total ?? undefined,
+            design_cost: f.design_cost ?? undefined,
+            ff_code: f.ff_code || undefined,
+            order_status: f.order_status,
+            tracking_code: f.tracking_code || undefined,
+            ...(details ? { details } : {}),
+        } : r));
     };
 
     const goFulfill = (recordId: string, factory: string) => {

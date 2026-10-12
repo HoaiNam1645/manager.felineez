@@ -233,9 +233,8 @@ export const updateOrderStatus = async (recordId: string, status: string): Promi
   await api.patch(`/api/records/${recordId}`, { order_status: status });
 };
 
-export const updateOrderFields = async (recordId: string, fields: { [k: string]: any }): Promise<Record> => {
-  const { record } = await api.patch<{ record: any }>(`/api/records/${recordId}`, fields);
-  return mapRecord(record);
+export const updateOrderFields = async (recordId: string, fields: { [k: string]: any }): Promise<void> => {
+  await api.patch(`/api/records/${recordId}`, fields);
 };
 
 export const updateFfNote = async (recordId: string, note: string): Promise<void> => {

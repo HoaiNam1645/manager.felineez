@@ -174,21 +174,20 @@ const isRefundedOrder = (record: AppRecord): boolean => (record as any).order_st
 
 const orderTotalForFeeEstimate = (record: AppRecord, fees: any): number => {
   if (isRefundedOrder(record)) return 0;
-  return num((record as any).details?.financials?.orderTotal) || num(fees?.orderTotal) || num((record as any).amount);
+  return num(fees?.orderTotal) || num((record as any).details?.financials?.orderTotal) || num((record as any).amount);
 };
 
 const orderNetForKpi = (record: AppRecord, fees: any): number => {
   if (isRefundedOrder(record)) return 0;
-  const orderTotal = orderTotalForFeeEstimate(record, fees);
-  if (hasNumber(fees?.estActualNet) && num(fees.estActualNet) <= orderTotal) return roundMoney(num(fees.estActualNet));
+  if (hasNumber(fees?.estActualNet)) return roundMoney(num(fees.estActualNet));
 
+  const orderTotal = orderTotalForFeeEstimate(record, fees);
   const rawNet = num(fees?.orderNet);
   if (rawNet > 0) {
     const rawFees = num(fees?.cardFees);
-    const adjustedNet = rawNet > orderTotal && rawNet + rawFees > 0
+    return rawNet > orderTotal && rawNet + rawFees > 0
       ? roundMoney((orderTotal * rawNet) / (rawNet + rawFees))
       : roundMoney(rawNet);
-    if (adjustedNet <= orderTotal) return adjustedNet;
   }
 
   return roundMoney(orderTotal * (1 - ETSY_FALLBACK_FEE_RATE));
