@@ -10,6 +10,14 @@ import { PaintBrushIcon } from '@heroicons/react/24/outline';
 // Helper to check if a header should be hidden on mobile (Only applied in Desktop View now)
 const isHiddenOnDesktopMobileView = (header: string) => HIDDEN_MOBILE_HEADERS.includes(header);
 
+const COLUMN_WIDTHS: { [h: string]: number } = {
+    'Stt': 64, 'Image': 92, 'Product Name': 560, 'Order ID': 190, 'Order Number': 190,
+    'Revenue': 96, 'Cost': 96, 'FF Cost': 96, 'DS Cost': 96, 'Refund': 96, 'Profit': 96, 'Currency': 86,
+    'Message': 260, 'Help Kind': 250,
+    'FF Code': 110, 'Status': 170, 'Tracking': 120, 'Note': 150, 'FF Note': 190, 'Support': 220,
+    'Actions': 400, 'DateTime': 130, 'Account': 140,
+};
+
 const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<string>, onResyncClick: (id: string) => void, onViewOrderDetails?: (id: string) => void, onViewDayDetails?: (date: string) => void, rowData?: any[], onFulfillClick?: (id: string) => void, onEditClick?: (id: string) => void, onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void, onDeleteClick?: (id: string) => void) => {
     if (cell === 'Click for detail' && onViewDayDetails && rowData) {
         const date = rowData[0] as string;
@@ -273,9 +281,12 @@ const DesktopRow = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                 }
 
                 // Apply custom width if provided
-                const customStyle = columnWidths && columnWidths[header]
-                    ? { flexBasis: `${columnWidths[header]}px`, minWidth: `${columnWidths[header]}px` }
-                    : undefined;
+                const columnWidth = columnWidths?.[header] ?? COLUMN_WIDTHS[header] ?? 120;
+                const customStyle = {
+                    flex: `0 0 ${columnWidth}px`,
+                    minWidth: `${columnWidth}px`,
+                    width: `${columnWidth}px`,
+                };
 
                 // Check if complex object
                 if (cell && typeof cell === 'object') {
@@ -313,7 +324,6 @@ const DesktopRow = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                                                 <div className="min-w-0 flex-1">
                                                     <p
                                                         className={`text-[13px] leading-5 font-medium text-blue-600 dark:text-blue-400 whitespace-normal break-words ${cell.id && onViewOrderDetails ? 'cursor-pointer hover:underline' : ''}`}
-                                                        title={it.name}
                                                         onClick={() => cell.id && onViewOrderDetails && onViewOrderDetails(cell.id)}
                                                     >
                                                         {it.name}
@@ -333,7 +343,7 @@ const DesktopRow = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                                                         <ItemDesignButton productName={it.designProductName || it.name} recordId={it.designRecordId || cell.id} designItemKey={it.designItemKey} hasDesign={it.hasDesign} hasDesignFiles={it.hasDesignFiles} designFileCount={it.designFileCount} onDesignClick={onDesignClick} />
                                                     </div>
                                                     {detailLines.map((line: string, li: number) => (
-                                                        <p key={li} className={`text-xs leading-4 whitespace-normal break-words ${line.startsWith('Personalization:') ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`} title={[...variantLines, ...persoLines].join('\n')}>
+                                                        <p key={li} className={`text-xs leading-4 whitespace-normal break-words ${line.startsWith('Personalization:') ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`}>
                                                             {line}
                                                         </p>
                                                     ))}

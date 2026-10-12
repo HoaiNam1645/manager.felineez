@@ -254,11 +254,11 @@ const DataTable: React.FC<DataTableProps> = ({ headers, data, onViewDayDetails, 
     // Desktop: give each column a sane minimum so wide tables scroll
     // horizontally instead of crushing the cells.
     const MIN_COL_WIDTH: { [h: string]: number } = {
-        'Stt': 64, 'Image': 95, 'Product Name': 420, 'Order ID': 150, 'Order Number': 150,
-        'Revenue': 90, 'Cost': 90, 'FF Cost': 90, 'DS Cost': 90, 'Refund': 90, 'Profit': 90, 'Currency': 90,
-        'Message': 250, 'Help Kind': 250,
-        'FF Code': 110, 'Status': 140, 'Tracking': 110, 'Note': 150, 'FF Note': 150, 'Support': 130,
-        'Actions': 315, 'DateTime': 115, 'Account': 120,
+        'Stt': 64, 'Image': 92, 'Product Name': 560, 'Order ID': 190, 'Order Number': 190,
+        'Revenue': 96, 'Cost': 96, 'FF Cost': 96, 'DS Cost': 96, 'Refund': 96, 'Profit': 96, 'Currency': 86,
+        'Message': 260, 'Help Kind': 250,
+        'FF Code': 110, 'Status': 170, 'Tracking': 120, 'Note': 150, 'FF Note': 190, 'Support': 220,
+        'Actions': 400, 'DateTime': 130, 'Account': 140,
     };
     const estimatedMinWidth = headers.reduce(
         (sum, h) => sum + (columnWidths?.[h] ?? MIN_COL_WIDTH[h] ?? 120),
@@ -303,6 +303,7 @@ const DataTable: React.FC<DataTableProps> = ({ headers, data, onViewDayDetails, 
                         const isHidden = isHiddenOnDesktopMobileView(header);
                         const canSort = header !== 'Stt' && header !== 'Image' && header !== 'Actions' && header !== 'Status' && header !== 'Tracking' && header !== 'Note' && header !== 'FF Note' && header !== 'Support';
                         let headerCellClass = `${isHidden ? 'hidden lg:flex' : 'flex'} items-center h-full min-w-0 overflow-hidden px-3 py-2 ${canSort ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : ''} transition-colors `;
+                        const headerWidth = columnWidths?.[header] ?? MIN_COL_WIDTH[header] ?? 120;
 
                         switch (header) {
                             case 'Stt':
@@ -360,9 +361,11 @@ const DataTable: React.FC<DataTableProps> = ({ headers, data, onViewDayDetails, 
                         }
 
                         // Apply custom width if provided
-                        const customHeaderStyle = columnWidths && columnWidths[header]
-                            ? { flexBasis: `${columnWidths[header]}px`, minWidth: `${columnWidths[header]}px`, width: `${columnWidths[header]}px` }
-                            : { width: undefined }; // Need to reset width if used in style tag previously
+                        const customHeaderStyle = {
+                            flex: `0 0 ${headerWidth}px`,
+                            minWidth: `${headerWidth}px`,
+                            width: `${headerWidth}px`,
+                        };
 
                         return (
                             <div
