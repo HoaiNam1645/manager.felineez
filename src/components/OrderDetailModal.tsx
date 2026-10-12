@@ -43,13 +43,14 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ record, onClose, on
   const items = details.items ?? [];
   const financials = details.financials;
   const etsyFees = record.etsy_fees; // imported from the Etsy Sold Orders CSV
-  const orderTotalForFeeEstimate = Number(etsyFees?.orderTotal || financials?.orderTotal || record.amount || 0);
-  const hasDetailedEtsyFees = !!etsyFees?.estBreakdown;
+  const orderTotalForFeeEstimate = Number(financials?.orderTotal || record.amount || etsyFees?.orderTotal || 0);
+  const hasStaleEtsyNet = !!etsyFees && Number(etsyFees.estActualNet || 0) > orderTotalForFeeEstimate;
+  const hasDetailedEtsyFees = !!etsyFees?.estBreakdown && !hasStaleEtsyNet;
   const hasLegacyEtsyNet = !!etsyFees && (Number(etsyFees.orderNet) > 0 || Number(etsyFees.cardFees) > 0);
-  const useFallbackFee = record.source === 'Etsy_Sales'
+  const useFallbackFee = (record.source === 'Etsy_Sales' || hasStaleEtsyNet)
     && orderTotalForFeeEstimate > 0
     && !hasDetailedEtsyFees
-    && !hasLegacyEtsyNet;
+    && (!hasLegacyEtsyNet || hasStaleEtsyNet);
   const fallbackFee = useFallbackFee
     ? Math.round(orderTotalForFeeEstimate * 0.145 * 100) / 100
     : 0;

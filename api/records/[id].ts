@@ -3,6 +3,12 @@ import { prisma } from '../_lib/prisma.js';
 import { requireAuth } from '../_lib/auth.js';
 import { badRequest, methodNotAllowed, notFound, parseDate, parseId, serverError } from '../_lib/helpers.js';
 import { visibleAccountEmails } from '../_lib/teamScope.js';
+import { emailTaxOf, enrichEtsyFees } from '../_lib/etsyNet.js';
+
+const num = (value: unknown): number => {
+  const parsed = typeof value === 'number' ? value : parseFloat(String(value ?? ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const auth = requireAuth(req, res);
@@ -74,6 +80,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (s === null) data.orderStatus = null;
         else if (typeof s === 'string' && ORDER_STATUSES.includes(s)) data.orderStatus = s;
         else return badRequest(res, 'invalid order_status');
+      }
+
+      const shouldSyncFinancials = b.amount !== undefined || b.details !== undefined;
+      const currentFees = (data.etsyFees ?? record.etsyFees) as any;
+      const hasImportedFees = currentFees
+        && typeof currentFees === 'object'
+        && !Array.isArray(currentFees)
+        && (
+          currentFees.orderTotal !== undefined ||
+          currentFees.orderNet !== undefined ||
+          currentFees.cardFees !== undefined ||
+          currentFees.estActualNet !== undefined
+        );
+      if (shouldSyncFinancials && hasImportedFees) {
+        const nextDetails = (data.details !== undefined ? data.details : record.details) as any;
+        const fin = nextDetails?.financials || {};
+        const orderTotal = num(fin.orderTotal) || num(data.amount ?? record.amount);
+        const discount = num(fin.discount);
+        const shipping = num(fin.shipping);
+        const tax = num(fin.tax);
+        const orderValue = num(fin.itemTotal) || Math.max(orderTotal + discount - shipping - tax, 0);
+        data.etsyFees = enrichEtsyFees({
+          ...currentFees,
+          orderValue,
+          discount,
+          shipping,
+          tax,
+          orderTotal,
+          manualRevenueOverride: true,
+          manualRevenueOverrideAt: new Date().toISOString(),
+        }, emailTaxOf(nextDetails));
       }
 
       const updated = await prisma.record.update({ where: { id }, data });
