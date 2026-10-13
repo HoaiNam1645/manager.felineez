@@ -24,6 +24,44 @@ import { triggerTelegramNotificationsSafe } from './_lib/telegramHelper.js';
 
 type NotificationEvent = { type: 'order' | 'funds' | 'message'; text: string };
 
+function getCancellationTransactionId(record: any): string | null {
+  const fromDetails = record?.details?.cancellation?.transactionId;
+  const fromOrderId = record?.source === 'Etsy_Cancelled' ? record?.orderId : null;
+  const value = fromDetails ?? fromOrderId;
+  return value ? String(value).trim() : null;
+}
+
+function hasTransactionId(details: any, transactionId: string): boolean {
+  const items = Array.isArray(details?.items) ? details.items : [];
+  return items.some((item: any) => String(item?.transactionId || '').trim() === transactionId);
+}
+
+async function findOrderIdByTransactionId(teamId: string, transactionId: string, accountId?: string | null, accountEmail?: string | null) {
+  const baseWhere: any = {
+    teamId,
+    kind: 'ORDER',
+    source: 'Etsy_Sales',
+    deletedAt: null,
+  };
+
+  const scopedWhere = { ...baseWhere };
+  if (accountId) scopedWhere.accountId = accountId;
+  else if (accountEmail) scopedWhere.accountEmail = accountEmail;
+
+  const findMatch = async (where: any) => {
+    const candidates = await prisma.record.findMany({
+      where,
+      orderBy: { dtLocal: 'desc' },
+      take: 10000,
+      select: { orderId: true, details: true },
+    });
+    return candidates.find((record: any) => hasTransactionId(record.details, transactionId))?.orderId || null;
+  };
+
+  const scopedMatch = (accountId || accountEmail) ? await findMatch(scopedWhere) : null;
+  return scopedMatch || await findMatch(baseWhere);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
@@ -153,7 +191,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           const dtLocal = new Date(parseInt(msgData.internalDate, 10));
 
-          newRecords.push({
+          const recordData: any = {
             emailId: msgData.id,
             dtLocal,
             amount: parsedData.amount ?? 0,
@@ -179,7 +217,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ffCode: parsedData.ff_code ?? null,
             productName: parsedData.product_name ?? null,
             details: (parsedData as any).details ?? null,
-          });
+          };
+
+          const cancellationTransactionId = getCancellationTransactionId(recordData);
+          if (rule.name === 'Etsy_Cancelled' && cancellationTransactionId) {
+            const matchedOrderId = await findOrderIdByTransactionId(
+              teamId,
+              cancellationTransactionId,
+              account.id,
+              userEmail
+            );
+
+            if (matchedOrderId) {
+              recordData.orderId = matchedOrderId;
+              recordData.details = {
+                ...(recordData.details || {}),
+                cancellation: {
+                  ...(recordData.details?.cancellation || {}),
+                  transactionId: cancellationTransactionId,
+                  matchedOrderId,
+                },
+              };
+            }
+          }
+
+          newRecords.push(recordData);
 
           if (parsedData.kind === 'order') {
             notificationEvents.push({

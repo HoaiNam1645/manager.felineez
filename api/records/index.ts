@@ -28,6 +28,44 @@ function isRecentForTelegram(record: any): boolean {
   return Date.now() - ts <= maxHours * 60 * 60 * 1000;
 }
 
+function getCancellationTransactionId(record: any): string | null {
+  const fromDetails = record?.details?.cancellation?.transactionId;
+  const fromOrderId = record?.source === 'Etsy_Cancelled' ? (record?.order_id ?? record?.orderId) : null;
+  const value = fromDetails ?? fromOrderId;
+  return value ? String(value).trim() : null;
+}
+
+function hasTransactionId(details: any, transactionId: string): boolean {
+  const items = Array.isArray(details?.items) ? details.items : [];
+  return items.some((item: any) => String(item?.transactionId || '').trim() === transactionId);
+}
+
+async function findOrderIdByTransactionId(teamId: string, transactionId: string, accountId?: string | null, accountEmail?: string | null) {
+  const baseWhere: any = {
+    teamId,
+    kind: 'ORDER',
+    source: 'Etsy_Sales',
+    deletedAt: null,
+  };
+
+  const scopedWhere = { ...baseWhere };
+  if (accountId) scopedWhere.accountId = accountId;
+  else if (accountEmail) scopedWhere.accountEmail = accountEmail;
+
+  const findMatch = async (where: any) => {
+    const candidates = await prisma.record.findMany({
+      where,
+      orderBy: { dtLocal: 'desc' },
+      take: 10000,
+      select: { orderId: true, details: true },
+    });
+    return candidates.find((record: any) => hasTransactionId(record.details, transactionId))?.orderId || null;
+  };
+
+  const scopedMatch = (accountId || accountEmail) ? await findMatch(scopedWhere) : null;
+  return scopedMatch || await findMatch(baseWhere);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const auth = requireAuth(req, res);
   if (!auth) return;
@@ -196,6 +234,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           productName: r.product_name ?? r.productName ?? null,
           details: r.details ?? undefined,
         };
+
+        const cancellationTransactionId = getCancellationTransactionId(r);
+        if (r.source === 'Etsy_Cancelled' && cancellationTransactionId) {
+          const matchedOrderId = await findOrderIdByTransactionId(
+            auth.teamId,
+            cancellationTransactionId,
+            fields.accountId,
+            fields.accountEmail
+          );
+
+          if (matchedOrderId) {
+            fields.orderId = matchedOrderId;
+            fields.details = {
+              ...(fields.details || {}),
+              cancellation: {
+                ...(fields.details?.cancellation || {}),
+                transactionId: cancellationTransactionId,
+                matchedOrderId,
+              },
+            };
+          }
+        }
         try {
           const saved = await prisma.record.upsert({
             where: emailId

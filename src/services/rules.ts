@@ -114,6 +114,15 @@ export const RULES: Rule[] = [
     ),
   },
 
+  // ==================== ETSY CANCELLED TRANSACTION ====================
+  {
+    name: "Etsy_Cancelled",
+    kind: "help",
+    platform: "etsy",
+    query: 'subject:"Your transaction has been canceled"',
+    parseFrom: "body",
+  },
+
   // ==================== ETSY MESSAGE (Conversation) ====================
   // Email chỉ là notification "X sent you a message" — KHÔNG chứa nội dung tin
   // nhắn, nên chỉ parse được tên khách + order id (nếu có) từ subject.
@@ -221,6 +230,36 @@ const _cleanCaseMessage = (s: string): string => {
   }
   const firstParagraph = s.split(/\n\s*\n/)[0] || "";
   return firstParagraph.replace(/\s+/g, ' ');
+};
+
+const getLineValue = (text: string, label: string): string | null => {
+  const re = new RegExp(`(?:^|\\n)\\s*${label}\\s*:?\\s*([^\\n]+)`, "i");
+  const match = text.match(re);
+  return match?.[1]?.replace(/\s+/g, " ").trim() || null;
+};
+
+const extractEtsyCancellation = (body: string) => {
+  const text = body.includes('<') ? stripHtmlBasic(body) : body;
+  if (!/You\s+have\s+canceled\s+the\s+following\s+transaction/i.test(text)) {
+    return null;
+  }
+
+  const transactionId = getLineValue(text, "Transaction\\s+ID");
+  if (!transactionId) return null;
+
+  const buyer = getLineValue(text, "Buyer");
+  const productName = getLineValue(text, "Item");
+  const reason = getLineValue(text, "Cancellation\\s+reason");
+  const quantityMatch = text.match(/\(\s*quantity\s*:\s*(\d+)\s*\)/i);
+  const quantity = quantityMatch ? Number(quantityMatch[1]) : null;
+
+  return {
+    transactionId,
+    buyer,
+    productName,
+    reason,
+    quantity,
+  };
 };
 
 // ==================== EBAY DETAIL EXTRACTION ====================
@@ -722,6 +761,33 @@ export const parseMessage = (
 
   // ====== RULE KHÔNG CÓ amountOrderRe (Etsy_Help) ======
   if (!rule.amountOrderRe) {
+    if (rule.name === "Etsy_Cancelled") {
+      const cancellation = extractEtsyCancellation(body);
+      if (!cancellation) return null;
+
+      return {
+        amount: 0.0,
+        order_id: cancellation.transactionId,
+        currency: null,
+        kind: "help",
+        help_kind: cancellation.reason
+          ? `Cancellation: ${cancellation.reason}`
+          : "Cancellation",
+        product_name: cancellation.productName || undefined,
+        details: {
+          cancellation,
+          items: cancellation.productName
+            ? [{
+                name: cancellation.productName,
+                quantity: cancellation.quantity || 1,
+                price: 0,
+                transactionId: cancellation.transactionId,
+              }]
+            : [],
+        } as any,
+      };
+    }
+
     if (rule.name === "Etsy_Help" && rule.bodyOidRe) {
       const oidMatch = body.match(rule.bodyOidRe);
       const order_id = oidMatch?.groups?.oid?.trim() || null;
