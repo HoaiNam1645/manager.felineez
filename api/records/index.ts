@@ -254,6 +254,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 matchedOrderId,
               },
             };
+            await prisma.record.updateMany({
+              where: {
+                teamId: auth.teamId,
+                kind: 'ORDER',
+                source: 'Etsy_Sales',
+                orderId: matchedOrderId,
+                deletedAt: null,
+              },
+              data: { orderStatus: 'CANCELLED' },
+            });
           }
         }
         try {

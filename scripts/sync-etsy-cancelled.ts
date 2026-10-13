@@ -80,6 +80,16 @@ async function mapAndUpsert(teamId: string, record: SyncRecord) {
           matchedOrderId,
         },
       };
+      await prisma.record.updateMany({
+        where: {
+          teamId,
+          kind: 'ORDER',
+          source: 'Etsy_Sales',
+          orderId: matchedOrderId,
+          deletedAt: null,
+        },
+        data: { orderStatus: 'CANCELLED' },
+      });
     }
   }
 
