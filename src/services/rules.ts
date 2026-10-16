@@ -123,6 +123,15 @@ export const RULES: Rule[] = [
     parseFrom: "body",
   },
 
+  // ==================== ETSY REFUND ====================
+  {
+    name: "Etsy_Refund",
+    kind: "help",
+    platform: "etsy",
+    query: 'from:transaction@etsy.com subject:"You have issued a refund"',
+    parseFrom: "body",
+  },
+
   // ==================== ETSY MESSAGE (Conversation) ====================
   // Email chỉ là notification "X sent you a message" — KHÔNG chứa nội dung tin
   // nhắn, nên chỉ parse được tên khách + order id (nếu có) từ subject.
@@ -260,6 +269,26 @@ const extractEtsyCancellation = (body: string) => {
     reason,
     quantity,
   };
+};
+
+const extractEtsyRefund = (subject: string, body: string) => {
+  const text = body.includes('<') ? stripHtmlBasic(body) : body;
+  const refundMatch = text.match(
+    /You\s+have\s+issued[\s\S]{0,200}?\s+a\s+refund\s+of\s*([^\d\n]*)([\d.,]+)(?:\s*([A-Z]{3}))?\s+for\s+order\s+number\s*#?\s*(\d+)/i,
+  );
+  if (!refundMatch) return null;
+
+  const subjectOrderId = subject.match(/Order\s*#\s*(\d+)/i)?.[1];
+  const orderId = subjectOrderId || refundMatch[4];
+  const amount = toFloat(refundMatch[2]);
+  if (!orderId || !Number.isFinite(amount) || amount <= 0) return null;
+
+  const prefix = refundMatch[1] || '';
+  const suffix = refundMatch[3] || '';
+  const currency = suffix.toUpperCase() || detectCurrencyFromPrefix(prefix);
+  const reason = getLineValue(text, "Refund\\s+reason");
+
+  return { orderId, amount, currency, reason };
 };
 
 // ==================== EBAY DETAIL EXTRACTION ====================
@@ -761,6 +790,21 @@ export const parseMessage = (
 
   // ====== RULE KHÔNG CÓ amountOrderRe (Etsy_Help) ======
   if (!rule.amountOrderRe) {
+    if (rule.name === "Etsy_Refund") {
+      const refund = extractEtsyRefund(subject, body);
+      if (!refund) return null;
+
+      return {
+        amount: 0.0,
+        order_id: refund.orderId,
+        currency: refund.currency,
+        kind: "help",
+        help_kind: refund.reason ? `Refund: ${refund.reason}` : "Refund",
+        refund_amount: refund.amount,
+        details: { refund } as any,
+      };
+    }
+
     if (rule.name === "Etsy_Cancelled") {
       const cancellation = extractEtsyCancellation(body);
       if (!cancellation) return null;

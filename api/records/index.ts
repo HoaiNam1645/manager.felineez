@@ -266,6 +266,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
           }
         }
+
+        if (r.source === 'Etsy_Refund' && fields.orderId && fields.refundAmount != null) {
+          const refundAmount = Number(fields.refundAmount);
+          if (Number.isFinite(refundAmount) && refundAmount > 0) {
+            const orderWhere: any = {
+              teamId: auth.teamId,
+              kind: 'ORDER',
+              source: 'Etsy_Sales',
+              orderId: fields.orderId,
+              deletedAt: null,
+            };
+            if (fields.accountId) orderWhere.accountId = fields.accountId;
+            else if (fields.accountEmail) orderWhere.accountEmail = fields.accountEmail;
+
+            const refundWhere: any = {
+              teamId: auth.teamId,
+              source: 'Etsy_Refund',
+              orderId: fields.orderId,
+              deletedAt: null,
+            };
+            if (fields.accountId) refundWhere.accountId = fields.accountId;
+            else if (fields.accountEmail) refundWhere.accountEmail = fields.accountEmail;
+
+            const latestRefund = await prisma.record.findFirst({
+              where: refundWhere,
+              orderBy: { dtLocal: 'desc' },
+              select: { dtLocal: true },
+            });
+            if (!latestRefund || fields.dtLocal >= latestRefund.dtLocal) {
+              await prisma.record.updateMany({
+                where: orderWhere,
+                data: { orderStatus: 'REFUND', refundAmount },
+              });
+            }
+          }
+        }
         try {
           const saved = await prisma.record.upsert({
             where: emailId
