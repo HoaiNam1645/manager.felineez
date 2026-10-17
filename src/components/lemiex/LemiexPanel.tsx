@@ -311,9 +311,10 @@ const FF_FACTORIES: { key: string; label: string; prefix: string }[] = [
   { key: 'dreamship', label: 'Dreamship', prefix: 'DSH-' },
   { key: 'hongphat', label: 'HongPhat', prefix: 'HPE-' },
   { key: 'hogoto', label: 'Hogoto', prefix: 'HGT-' },
+  { key: 'printlab', label: 'Printlab', prefix: 'PLB-' },
 ];
 
-const isSent = (r: Record) => /^(LMX|MGO|VNW|MKP|DSH|HPE|HGT)-/.test(r.ff_code || '');
+const isSent = (r: Record) => /^(LMX|MGO|VNW|MKP|DSH|HPE|HGT|PLB)-/.test(r.ff_code || '');
 
 const OrderPicker: React.FC<{
   orders: Record[];
@@ -386,7 +387,7 @@ const OrderPicker: React.FC<{
       <div className="divide-y divide-gray-100 dark:divide-gray-700/60 max-h-[560px] overflow-y-auto">
         {orders.map(r => {
           const item = r.details?.items?.[0];
-          const sent = /^(LMX|MGO|VNW|MKP|DSH|HPE|HGT)-/.test(r.ff_code || '');
+          const sent = /^(LMX|MGO|VNW|MKP|DSH|HPE|HGT|PLB)-/.test(r.ff_code || '');
           return (
             <div key={r.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer" onClick={() => onView(r)}>
               {item?.image ? (
@@ -1003,9 +1004,9 @@ const LemiexPanel: React.FC = () => {
   }, [searchParams, setSearchParams]);
 
   // Factory provider for the open form — URL-backed (?fp=..., default lemiex)
-  type Fp = 'lemiex' | 'mango' | 'vinaway' | 'monkeyking' | 'dreamship' | 'hongphat' | 'hogoto';
+  type Fp = 'lemiex' | 'mango' | 'vinaway' | 'monkeyking' | 'dreamship' | 'hongphat' | 'hogoto' | 'printlab';
   const fpRaw = searchParams.get('fp');
-  const fp: Fp = fpRaw === 'mango' || fpRaw === 'vinaway' || fpRaw === 'monkeyking' || fpRaw === 'dreamship' || fpRaw === 'hongphat' || fpRaw === 'hogoto' ? fpRaw : 'lemiex';
+  const fp: Fp = fpRaw === 'mango' || fpRaw === 'vinaway' || fpRaw === 'monkeyking' || fpRaw === 'dreamship' || fpRaw === 'hongphat' || fpRaw === 'hogoto' || fpRaw === 'printlab' ? fpRaw : 'lemiex';
   const setFp = useCallback((v: Fp) => {
     const next = new URLSearchParams(searchParams);
     if (v === 'lemiex') next.delete('fp'); else next.set('fp', v);
@@ -1039,6 +1040,7 @@ const LemiexPanel: React.FC = () => {
                 { key: 'dreamship', label: 'Dreamship' },
                 { key: 'hongphat', label: 'HongPhat' },
                 { key: 'hogoto', label: 'Hogoto' },
+                { key: 'printlab', label: 'Printlab' },
               ] as { key: Fp; label: string }[]).map(t => (
                 <button
                   key={t.key}
@@ -1063,6 +1065,16 @@ const LemiexPanel: React.FC = () => {
               <HongPhatOrderForm key={`h-${selectedRecord.id}`} record={selectedRecord} onBack={goBack} />
             ) : fp === 'hogoto' ? (
               <HogotoOrderForm key={`g-${selectedRecord.id}`} record={selectedRecord} onBack={goBack} />
+            ) : fp === 'printlab' ? (
+              <div className="space-y-4">
+                <FulfillOrderHeader record={selectedRecord} onBack={goBack} />
+                <div className={`${cardCls} p-6 max-w-2xl`}>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white">Printlab</h3>
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    Printlab is selected for this order. API credentials and order mapping have not been configured yet.
+                  </p>
+                </div>
+              </div>
             ) : (
               <CreateOrderForm key={`l-${selectedRecord.id}`} record={selectedRecord} onBack={goBack} />
             )}

@@ -29,6 +29,7 @@ const FACTORIES: { key: string; label: string }[] = [
     { key: 'dreamship', label: 'Dreamship' },
     { key: 'hongphat', label: 'HongPhat' },
     { key: 'hogoto', label: 'Hogoto' },
+    { key: 'printlab', label: 'Printlab' },
 ];
 
 // Status quick-filter: pipeline statuses + "No tracking" (SHIPPED without a tracking code)
@@ -37,7 +38,7 @@ type StatusFilter = 'ALL' | (typeof ORDER_STATUSES)[number] | 'NO_TRACKING';
 // Factory filter maps to the ffCode prefix each factory uses
 const FF_PREFIX: { [key: string]: string } = {
     lemiex: 'LMX-', mango: 'MGO-', vinaway: 'VNW-', monkeyking: 'MKP-',
-    dreamship: 'DSH-', hongphat: 'HPE-', hogoto: 'HGT-',
+    dreamship: 'DSH-', hongphat: 'HPE-', hogoto: 'HGT-', printlab: 'PLB-',
 };
 const VISIBLE_ORDER_STATUSES = ORDER_STATUSES.filter(status => status !== 'READY');
 
@@ -658,7 +659,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                 // Pre-mark the factory this order was already sent to (from its ffCode prefix)
                 const prefixToKey: { [p: string]: string } = {
                     LMX: 'lemiex', MGO: 'mango', VNW: 'vinaway', MKP: 'monkeyking',
-                    DSH: 'dreamship', HPE: 'hongphat', HGT: 'hogoto',
+                    DSH: 'dreamship', HPE: 'hongphat', HGT: 'hogoto', PLB: 'printlab',
                 };
                 const ffCode = allRecords.find(r => r.id === fulfillFor)?.ff_code || '';
                 const m = /^([A-Z]{3})-/.exec(ffCode);

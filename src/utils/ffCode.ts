@@ -7,6 +7,7 @@ const FF_PREFIX_NAMES: { [p: string]: string } = {
     DSH: 'Dreamship',
     HPE: 'HongPhat',
     HGT: 'Hogoto',
+    PLB: 'Printlab',
 };
 
 export const ffFactoryName = (code: string): string => {

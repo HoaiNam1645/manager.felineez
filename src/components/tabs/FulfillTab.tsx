@@ -16,6 +16,7 @@ const FACTORIES: { key: string; label: string; prefix: string }[] = [
     { key: 'dreamship', label: 'Dreamship', prefix: 'DSH-' },
     { key: 'hongphat', label: 'HongPhat', prefix: 'HPE-' },
     { key: 'hogoto', label: 'Hogoto', prefix: 'HGT-' },
+    { key: 'printlab', label: 'Printlab', prefix: 'PLB-' },
 ];
 const BY_PREFIX = new Map(FACTORIES.map(f => [f.prefix.slice(0, 3), f]));
 
