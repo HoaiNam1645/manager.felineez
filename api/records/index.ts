@@ -302,12 +302,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           }
         }
+
+        // Email re-parsing does not include fulfillment fields. Preserve the
+        // existing values unless the caller explicitly supplied each field.
+        const updateFields: any = { ...fields };
+        const hasOwn = (key: string) => Object.prototype.hasOwnProperty.call(r, key);
+        if (!hasOwn('cost_total') && !hasOwn('costTotal')) delete updateFields.costTotal;
+        if (!hasOwn('design_cost') && !hasOwn('designCost')) delete updateFields.designCost;
+        if (!hasOwn('refund_amount') && !hasOwn('refundAmount')) delete updateFields.refundAmount;
+        if (!hasOwn('ff_code') && !hasOwn('ffCode')) delete updateFields.ffCode;
+        if (!hasOwn('product_name') && !hasOwn('productName')) delete updateFields.productName;
+
         try {
           const saved = await prisma.record.upsert({
             where: emailId
               ? { teamId_emailId: { teamId: auth.teamId, emailId } }
               : { id: r.id || '__never__' },
-            update: fields,
+            update: updateFields,
             create: {
               teamId: auth.teamId,
               emailId,
@@ -326,7 +337,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (e?.code === 'P2002' && emailId) {
             const saved = await prisma.record.update({
               where: { teamId_emailId: { teamId: auth.teamId, emailId } },
-              data: fields,
+              data: updateFields,
             });
             savedRecords.push(saved);
           } else {
