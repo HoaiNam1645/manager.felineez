@@ -20,6 +20,7 @@ const MANUAL_FF_CODE_OPTIONS = [
     'HP',
     'fristify',
     'printify',
+    'printlab',
     'lenful',
     'zootop',
     'dreamship',
