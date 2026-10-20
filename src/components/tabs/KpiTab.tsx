@@ -98,6 +98,7 @@ const KpiTab: React.FC = () => {
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Seller KPI</h2>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                         {filterDateRange.from} → {filterDateRange.to} · ranked by Net
+                        {kpi ? ` · Attribution ${kpi.totals.attributionRate}%` : ''}
                     </p>
                 </div>
                 {!isLeader ? (
@@ -133,7 +134,7 @@ const KpiTab: React.FC = () => {
             {kpi && (
                 <>
                     {/* KPI cards (system component for visual consistency) */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-9 gap-3 md:gap-4 mb-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
                         <KpiCard title="Total Orders" value={{ value: kpi.totals.attributedOrders.toLocaleString() }} />
                         <KpiCard title="Items Sold" value={{ value: kpi.totals.attributedItems.toLocaleString() }} />
                         <KpiCard title="Revenue" value={{ value: `${money(kpi.totals.revenue)} ${kpi.currency}` }} />
@@ -142,7 +143,6 @@ const KpiTab: React.FC = () => {
                         <KpiCard title="DS Cost" value={{ value: `${money(kpi.totals.designCost || 0)} USD` }} />
                         <KpiCard title="Refund" value={{ value: `${money(kpi.totals.refund || 0)} USD` }} />
                         <KpiCard title="Profit" value={{ value: `${money(kpi.totals.profit)} ${kpi.currency}` }} />
-                        <KpiCard title="Attribution" value={{ value: `${kpi.totals.attributionRate}%` }} />
                     </div>
 
                     {/* Empty state — data only, no explanations */}
