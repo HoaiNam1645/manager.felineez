@@ -8,6 +8,7 @@ const MANUAL_FF_CODE_OPTIONS = [
     'lem-vn',
     'hgt',
     'mkp',
+    'MK',
     'print arrow',
     'tp',
     'lizzy',
