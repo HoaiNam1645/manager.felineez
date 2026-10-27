@@ -9,6 +9,7 @@ const MANUAL_FF_CODE_OPTIONS = [
     'hgt',
     'mkp',
     'MK',
+    'Lemon',
     'print arrow',
     'tp',
     'lizzy',
