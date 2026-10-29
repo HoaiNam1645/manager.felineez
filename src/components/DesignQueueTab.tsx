@@ -167,24 +167,24 @@ const DesignQueueTab: React.FC<{
   return (
     <div className="min-h-full bg-slate-50 p-4 dark:bg-gray-900 md:p-6">
       <div className="mx-auto max-w-[1600px] space-y-6">
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <div className="border-b border-slate-100 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 px-5 py-6 text-white dark:border-gray-700 md:px-7">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300">Design workspace</p>
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="border-b border-sky-100 bg-gradient-to-r from-sky-50 via-white to-cyan-50 px-5 py-6 text-slate-900 dark:border-gray-700 dark:from-gray-800 dark:via-gray-800 dark:to-cyan-950/40 dark:text-white md:px-7">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">Design workspace</p>
             <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h1 className="text-2xl font-black tracking-tight md:text-3xl">Quản lý Design</h1>
-                <p className="mt-1 max-w-2xl text-sm text-slate-300">Theo dõi đơn New chưa có Design và phân loại khối lượng Team làm / Làm ngoài trên cùng một màn hình.</p>
+                <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">Theo dõi đơn New chưa có Design và phân loại khối lượng Team làm / Làm ngoài trên cùng một màn hình.</p>
               </div>
               <div className="relative w-full lg:w-80">
                 <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm order, sản phẩm, shop..." className="h-10 w-full rounded-xl border border-white/15 bg-white/10 pl-10 pr-3 text-sm text-white outline-none placeholder:text-slate-400 focus:border-cyan-400 focus:bg-white/15" />
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm order, sản phẩm, shop..." className="h-10 w-full rounded-md border border-slate-300 bg-white pl-10 pr-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-blue-900/40" />
               </div>
             </div>
           </div>
 
           <div className="grid gap-3 p-4 md:grid-cols-3 md:p-6">
             {views.map((view) => (
-              <button key={view.key} type="button" onClick={() => setActiveView(view.key)} className={`rounded-xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${view.tone} ${activeView === view.key ? view.activeTone : ''}`}>
+              <button key={view.key} type="button" onClick={() => setActiveView(view.key)} className={`rounded-md border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${view.tone} ${activeView === view.key ? view.activeTone : ''}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-bold">{view.label}</p>
@@ -202,15 +202,15 @@ const DesignQueueTab: React.FC<{
             <h2 className="text-lg font-black text-slate-900 dark:text-white">{views.find((view) => view.key === activeView)?.label}</h2>
             <p className="text-sm text-slate-500 dark:text-gray-400">Đang hiển thị {visibleTasks.length} item</p>
           </div>
-          {search && <button type="button" onClick={() => setSearch('')} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">Xóa tìm kiếm</button>}
+          {search && <button type="button" onClick={() => setSearch('')} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">Xóa tìm kiếm</button>}
         </div>
 
         {products === null ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {[0, 1, 2, 3, 4, 5].map((item) => <div key={item} className="h-56 animate-pulse rounded-2xl bg-slate-200 dark:bg-gray-800" />)}
+            {[0, 1, 2, 3, 4, 5].map((item) => <div key={item} className="h-56 animate-pulse rounded-md bg-slate-200 dark:bg-gray-800" />)}
           </div>
         ) : visibleTasks.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-gray-700 dark:bg-gray-800">
+          <div className="rounded-md border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-gray-700 dark:bg-gray-800">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl dark:bg-emerald-900/30">✓</div>
             <p className="mt-4 font-bold text-slate-900 dark:text-white">Không có item trong nhóm này</p>
             <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">Thử đổi nhóm hoặc xóa nội dung tìm kiếm.</p>
@@ -220,12 +220,12 @@ const DesignQueueTab: React.FC<{
             {visibleTasks.map((task) => {
               const statusClass = ORDER_STATUS_CLASSES[task.status] || ORDER_STATUS_CLASSES.NEW;
               return (
-                <article key={task.key} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                <article key={task.key} className="group overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800">
                   <div className="flex gap-4 p-4">
                     {task.image ? (
-                      <CachedImage src={task.image} alt={task.productName} onClick={() => setPreviewImage(task.image || null)} className="h-24 w-24 shrink-0 cursor-zoom-in rounded-xl border border-slate-200 object-cover dark:border-gray-600" />
+                      <CachedImage src={task.image} alt={task.productName} onClick={() => setPreviewImage(task.image || null)} className="h-24 w-24 shrink-0 cursor-zoom-in rounded-md border border-slate-200 object-cover dark:border-gray-600" />
                     ) : (
-                      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xs font-semibold text-slate-400 dark:bg-gray-700">NO IMAGE</div>
+                      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-semibold text-slate-400 dark:bg-gray-700">NO IMAGE</div>
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
@@ -245,8 +245,8 @@ const DesignQueueTab: React.FC<{
                     </div>
                   </div>
                   <div className="flex gap-2 border-t border-slate-100 p-3 dark:border-gray-700">
-                    <button type="button" onClick={() => onViewOrderDetails(task.recordId)} className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Xem đơn</button>
-                    <button type="button" onClick={() => task.designType || task.match ? openDesign(task) : setPendingTask(task)} className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-700 dark:bg-cyan-600 dark:hover:bg-cyan-500">{task.match ? 'Mở Design' : 'Tạo Design'}</button>
+                    <button type="button" onClick={() => onViewOrderDetails(task.recordId)} className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Xem đơn</button>
+                    <button type="button" onClick={() => task.designType || task.match ? openDesign(task) : setPendingTask(task)} className="flex-1 rounded-md bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500">{task.match ? 'Mở Design' : 'Tạo Design'}</button>
                   </div>
                 </article>
               );
@@ -257,22 +257,22 @@ const DesignQueueTab: React.FC<{
 
       {pendingTask && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4" onClick={() => !assigning && setPendingTask(null)}>
-          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800" onClick={(event) => event.stopPropagation()}>
+          <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800" onClick={(event) => event.stopPropagation()}>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Phân loại Design</p>
             <h3 className="mt-2 text-lg font-black text-slate-900 dark:text-white">Ai sẽ làm Design này?</h3>
             <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-gray-400">#{pendingTask.orderId} · {pendingTask.productName}</p>
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <button type="button" disabled={assigning} onClick={() => void assignDesign(pendingTask, 'TEAM')} className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Team làm</button>
-              <button type="button" disabled={assigning} onClick={() => void assignDesign(pendingTask, 'OUTSOURCE')} className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Làm ngoài</button>
+              <button type="button" disabled={assigning} onClick={() => void assignDesign(pendingTask, 'TEAM')} className="rounded-md border border-blue-200 bg-blue-50 px-4 py-4 text-sm font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Team làm</button>
+              <button type="button" disabled={assigning} onClick={() => void assignDesign(pendingTask, 'OUTSOURCE')} className="rounded-md border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Làm ngoài</button>
             </div>
-            <button type="button" disabled={assigning} onClick={() => setPendingTask(null)} className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700">Hủy</button>
+            <button type="button" disabled={assigning} onClick={() => setPendingTask(null)} className="mt-3 w-full rounded-md px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700">Hủy</button>
           </div>
         </div>
       )}
 
       {previewImage && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 p-4" onClick={() => setPreviewImage(null)}>
-          <img src={previewImage} alt="" className="max-h-full max-w-full rounded-xl object-contain" />
+          <img src={previewImage} alt="" className="max-h-full max-w-full rounded-md object-contain" />
         </div>
       )}
     </div>
