@@ -403,14 +403,17 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [baseRows, statusFilter, designProducts, allRecords, designClock]);
 
-    const overdueDesignItems = useMemo(() => visibleRows.flatMap(row => {
+    const overdueDesignItems = useMemo(() => markDesignRows(processedData.orders.rows).flatMap(row => {
+        if (['SHIPPED', 'CANCELLED', 'REFUND'].includes(statusOf(row))) return [];
         const productCell = productIdx !== -1 ? row[productIdx] as any : null;
         if (!productCell || !Array.isArray(productCell.items)) return [];
         const orderId = orderIdIdx !== -1 ? String(row[orderIdIdx] || 'N/A') : 'N/A';
         return productCell.items
             .filter((item: any) => item.designOverdue)
             .map((item: any) => ({ orderId, productName: item.name || 'Sản phẩm', overdueMs: Number(item.designOverdueMs || 0) }));
-    }), [visibleRows, productIdx, orderIdIdx]);
+        // Keep the warning global even when the table is filtered by day, source, status or search.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [processedData.orders.rows, designProducts, allRecords, designClock, productIdx, orderIdIdx, statusIdx]);
 
     const displayRows = useMemo(() => {
         let rows = visibleRows.map(row => {
