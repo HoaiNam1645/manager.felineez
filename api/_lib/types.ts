@@ -48,6 +48,9 @@ export interface OrderDetails {
   detectedCurrency?: string;
   shopName?: string;
   buyerMessage?: string;
+  designRequestedAt?: string;
+  designRequests?: Record<string, string>;
+  designTypes?: Record<string, 'TEAM' | 'OUTSOURCE'>;
 }
 
 export interface Record {

@@ -28,7 +28,7 @@ import TemuExportModal from './TemuExportModal';
 import { getRecentOrderRecords, getRecordById } from '../services/firebaseService';
 import { Record as OrderRecord } from '../types';
 import { useNotification } from '../contexts/NotificationContext';
-import { hasDesignRequestForItem, makeDesignItemKey, productMatchesDesignItem } from '../utils/designItems';
+import { DESIGN_SOURCE_PREFIX, DESIGN_TYPE_LABELS, designTypeForItem, hasDesignRequestForItem, makeDesignItemKey, productMatchesDesignItem } from '../utils/designItems';
 
 const PAGE_SIZE = 20;
 const UPLOAD_CHUNK = 4; // images per upload request (keeps payload under server limit)
@@ -685,6 +685,11 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
     );
   }
 
+  const activeDesignItemKey = designItemKey || (product.source?.startsWith(DESIGN_SOURCE_PREFIX) ? product.source : '');
+  const activeDesignType = designOrder && activeDesignItemKey
+    ? designTypeForItem(designOrder.details, activeDesignItemKey)
+    : null;
+
   return (
     <>
       <Header
@@ -713,9 +718,16 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
                   </p>
                 )}
               </div>
-              <span className="w-fit rounded-md bg-blue-50 dark:bg-blue-900/30 px-2 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
-                {designOrder.order_status || 'NEW'}
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {activeDesignType && (
+                  <span className={`w-fit rounded-md px-2 py-1 text-xs font-semibold ${activeDesignType === 'TEAM' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
+                    {DESIGN_TYPE_LABELS[activeDesignType]}
+                  </span>
+                )}
+                <span className="w-fit rounded-md bg-blue-50 dark:bg-blue-900/30 px-2 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                  {designOrder.order_status || 'NEW'}
+                </span>
+              </div>
             </div>
             <div className="mt-4 space-y-3">
               {(designOrder.details?.items?.length ? designOrder.details.items : [{ name: designOrder.product_name || title, quantity: 1, price: designOrder.amount } as any]).map((item: any, index: number) => (

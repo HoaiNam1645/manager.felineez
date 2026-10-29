@@ -5,6 +5,7 @@ import { ffFactoryName } from '../../utils/ffCode';
 import OrderStatusSelect from './OrderStatusSelect';
 import { ListChildComponentProps, RowData } from './types';
 import { PaintBrushIcon } from '@heroicons/react/24/outline';
+import { DESIGN_TYPE_LABELS, DesignType } from '../../utils/designItems';
 
 const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<string>, onResyncClick: (id: string) => void, onViewOrderDetails?: (id: string) => void, onViewDayDetails?: (date: string) => void, rowData?: any[], isMobile: boolean = false, onFulfillClick?: (id: string) => void, onEditClick?: (id: string) => void, onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void, onDeleteClick?: (id: string) => void) => {
     if (cell === 'Click for detail' && onViewDayDetails && rowData) {
@@ -143,7 +144,7 @@ const renderTextContent = (cell: any) => {
         : (typeof cell === 'string' ? cell : '');
 }
 
-const ItemDesignButton = ({ productName, recordId, designItemKey, hasDesign, hasDesignFiles, designFileCount, onDesignClick }: { productName?: string; recordId?: string; designItemKey?: string; hasDesign?: boolean; hasDesignFiles?: boolean; designFileCount?: number; onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void }) => {
+const ItemDesignButton = ({ productName, recordId, designItemKey, designType, hasDesign, hasDesignFiles, designFileCount, onDesignClick }: { productName?: string; recordId?: string; designItemKey?: string; designType?: DesignType | null; hasDesign?: boolean; hasDesignFiles?: boolean; designFileCount?: number; onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void }) => {
     if (!productName || !onDesignClick) return null;
     const colorClass = hasDesignFiles
         ? 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300'
@@ -151,6 +152,7 @@ const ItemDesignButton = ({ productName, recordId, designItemKey, hasDesign, has
             ? 'text-pink-600 hover:bg-pink-50 hover:text-pink-700 dark:text-pink-400 dark:hover:bg-pink-900/30 dark:hover:text-pink-300'
             : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-300';
     return (
+        <div className="flex w-fit flex-wrap items-center gap-1">
         <button
             type="button"
             onClick={() => onDesignClick(productName, recordId, designItemKey)}
@@ -160,6 +162,12 @@ const ItemDesignButton = ({ productName, recordId, designItemKey, hasDesign, has
             <PaintBrushIcon className="h-3.5 w-3.5" />
             <span>Design</span>
         </button>
+        {designType && (
+            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${designType === 'TEAM' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
+                {DESIGN_TYPE_LABELS[designType]}
+            </span>
+        )}
+        </div>
     );
 };
 
@@ -296,7 +304,7 @@ const MobileCard = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                                                 >
                                                     x{it.quantity || 1}
                                                 </span>
-                                                <ItemDesignButton productName={it.designProductName || it.name} recordId={it.designRecordId} designItemKey={it.designItemKey} hasDesign={it.hasDesign} hasDesignFiles={it.hasDesignFiles} designFileCount={it.designFileCount} onDesignClick={onDesignClick} />
+                                                <ItemDesignButton productName={it.designProductName || it.name} recordId={it.designRecordId} designItemKey={it.designItemKey} designType={it.designType} hasDesign={it.hasDesign} hasDesignFiles={it.hasDesignFiles} designFileCount={it.designFileCount} onDesignClick={onDesignClick} />
                                             </React.Fragment>
                                         ))}
                                     </div>

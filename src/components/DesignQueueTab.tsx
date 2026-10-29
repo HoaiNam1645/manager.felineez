@@ -7,7 +7,7 @@ import { decodeHTMLEntities } from '../utils/htmlDecode';
 import { ORDER_STATUS_CLASSES, ORDER_STATUS_LABELS } from '../constants/orderStatus';
 import { Product, fetchAllProducts } from '../services/productService';
 import { useNotification } from '../contexts/NotificationContext';
-import { hasDesignRequestForItem, makeDesignItemKey, productMatchesDesignItem } from '../utils/designItems';
+import { DESIGN_TYPE_LABELS, DesignType, designTypeForItem, hasDesignRequestForItem, makeDesignItemKey, productMatchesDesignItem } from '../utils/designItems';
 import { captureProductsReturnState } from '../utils/productReturnState';
 
 type DesignTask = {
@@ -24,6 +24,7 @@ type DesignTask = {
   status: string;
   dtLocal: string;
   designItemKey: string;
+  designType: DesignType | null;
 };
 
 const ACTIVE_STATUSES = new Set(['DESIGN_REQUESTED', 'DESIGNING']);
@@ -89,6 +90,7 @@ const DesignQueueTab: React.FC<{
             status: itemRequested ? 'DESIGN_REQUESTED' : r.order_status || 'NEW',
             dtLocal: r.dt_local,
             designItemKey,
+            designType: designTypeForItem(r.details, designItemKey),
           };
         }).filter(Boolean) as DesignTask[];
       })
@@ -249,6 +251,11 @@ const DesignQueueTab: React.FC<{
                       {task.variant && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{task.variant}</p>}
                       {task.personalization && <p className="text-xs font-medium text-amber-700 dark:text-amber-300 line-clamp-2">{task.personalization}</p>}
                       <p className="text-xs text-gray-400">{task.account} - Qty {task.quantity}</p>
+                      {task.designType && (
+                        <span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold ${task.designType === 'TEAM' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
+                          {DESIGN_TYPE_LABELS[task.designType]}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-2 md:justify-end">

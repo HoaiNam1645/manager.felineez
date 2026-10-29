@@ -18,7 +18,7 @@ import { Product, fetchAllProducts } from '../../services/productService';
 import { api } from '../../services/apiClient';
 import { fetchListedIdeas } from '../../services/ideasService';
 import { useNotification } from '../../contexts/NotificationContext';
-import { designRequestsOf, productMatchesDesignItem } from '../../utils/designItems';
+import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, productMatchesDesignItem } from '../../utils/designItems';
 import { captureProductsReturnState, restoreProductsReturnScroll } from '../../utils/productReturnState';
 
 const FACTORIES: { key: string; label: string }[] = [
@@ -112,6 +112,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
     const [mappingSku, setMappingSku] = useState(false);
     const [editFor, setEditFor] = useState<string | null>(null);
     const [designProducts, setDesignProducts] = useState<Product[]>([]);
+    const [pendingDesign, setPendingDesign] = useState<{ productName: string; recordId: string; designItemKey: string } | null>(null);
 
     const editRecord = editFor ? allRecords.find(r => r.id === editFor) || null : null;
     const rawOrderStatus = searchParams.get('orderStatus');
@@ -204,7 +205,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
         setRecords(prev => prev.map(r => r.id === recordId ? { ...r, details: details as any } : r));
     };
 
-    const goDesign = async (productName: string, recordId?: string, designItemKey?: string) => {
+    const openDesign = async (productName: string, recordId?: string, designItemKey?: string, designType?: DesignType) => {
         const q = productName.trim();
         const params = new URLSearchParams();
         if (q) params.set('design', q);
@@ -214,14 +215,17 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
             try {
                 const rec = allRecords.find(r => r.id === recordId);
                 const previousRequests = designRequestsOf(rec?.details);
+                const previousTypes = designTypesOf(rec?.details);
                 const now = new Date().toISOString();
                 const details = rec?.details ? {
                     ...rec.details,
                     designRequestedAt: now,
                     ...(designItemKey ? { designRequests: { ...previousRequests, [designItemKey]: now } } : {}),
+                    ...(designItemKey && designType ? { designTypes: { ...previousTypes, [designItemKey]: designType } } : {}),
                 } : {
                     designRequestedAt: now,
                     ...(designItemKey ? { designRequests: { [designItemKey]: now } } : {}),
+                    ...(designItemKey && designType ? { designTypes: { [designItemKey]: designType } } : {}),
                 };
                 await updateOrderFields(recordId, { details });
                 setRecords(prev => prev.map(r => r.id === recordId ? { ...r, details: details as any } : r));
@@ -232,6 +236,19 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
         const returnPath = `${location.pathname}${location.search}${location.hash}`;
         captureProductsReturnState(returnPath);
         navigate(`/products${params.toString() ? `?${params.toString()}` : ''}`, { state: { from: returnPath } });
+    };
+
+    const goDesign = (productName: string, recordId?: string, designItemKey?: string) => {
+        if (recordId && designItemKey) {
+            const rec = allRecords.find(r => r.id === recordId);
+            const existingType = designTypeForItem(rec?.details, designItemKey);
+            const hasDesign = designProducts.some(product => productMatchesDesignItem(product, designItemKey));
+            if (!existingType && !hasDesign) {
+                setPendingDesign({ productName, recordId, designItemKey });
+                return;
+            }
+        }
+        void openDesign(productName, recordId, designItemKey);
     };
 
     // Columns hidden from the Order List UI (data is kept for filtering/export)
@@ -276,18 +293,20 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
     };
 
     const markDesignRows = (rows: any[][]) => {
-        if (designProducts.length === 0 || productIdx === -1) return rows;
+        if (productIdx === -1) return rows;
         return rows.map(row => {
             const productCell = row[productIdx] as any;
             if (!productCell || productCell.type !== 'items' || !Array.isArray(productCell.items)) return row;
+            const record = productCell.id ? allRecords.find(r => r.id === productCell.id) : null;
             const nextItems = productCell.items.map((item: any) => {
                 const matchedDesign = designProducts.find(product => productMatchesDesignItem(product, item.designItemKey));
                 const hasDesign = !!matchedDesign;
                 const hasDesignFiles = (matchedDesign?.images?.length || 0) > 0;
                 const designFileCount = matchedDesign?.images?.length || 0;
-                return hasDesign === item.hasDesign && hasDesignFiles === item.hasDesignFiles && designFileCount === item.designFileCount
+                const designType = designTypeForItem(record?.details, item.designItemKey);
+                return hasDesign === item.hasDesign && hasDesignFiles === item.hasDesignFiles && designFileCount === item.designFileCount && designType === item.designType
                     ? item
-                    : { ...item, hasDesign, hasDesignFiles, designFileCount };
+                    : { ...item, hasDesign, hasDesignFiles, designFileCount, designType };
             });
             const hasDesign = nextItems.some((item: any) => item.hasDesign);
             if (productCell.hasDesign === hasDesign && nextItems.every((item: any, i: number) => item === productCell.items[i])) return row;
@@ -362,7 +381,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
 
         return rows;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [baseRows, statusFilter, designProducts]);
+    }, [baseRows, statusFilter, designProducts, allRecords]);
 
     const displayRows = useMemo(() => {
         let rows = visibleRows.map(row => {
@@ -652,6 +671,48 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                     onClose={() => setEditFor(null)}
                     onSave={handleSaveEdit}
                 />
+            )}
+
+            {pendingDesign && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4" onClick={() => setPendingDesign(null)}>
+                    <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white">Phân loại Design</h3>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Chọn người thực hiện cho Design đầu tiên của sản phẩm này.
+                        </p>
+                        <div className="mt-4 grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const selection = pendingDesign;
+                                    setPendingDesign(null);
+                                    void openDesign(selection.productName, selection.recordId, selection.designItemKey, 'TEAM');
+                                }}
+                                className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                            >
+                                Team làm
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const selection = pendingDesign;
+                                    setPendingDesign(null);
+                                    void openDesign(selection.productName, selection.recordId, selection.designItemKey, 'OUTSOURCE');
+                                }}
+                                className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                            >
+                                Làm ngoài
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setPendingDesign(null)}
+                            className="mt-4 w-full rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                        >
+                            Hủy
+                        </button>
+                    </div>
+                </div>
             )}
 
             {/* Factory picker for the Fulfill action */}

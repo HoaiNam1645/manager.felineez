@@ -6,6 +6,7 @@ import OrderStatusSelect from './OrderStatusSelect';
 import { ListChildComponentProps, RowData } from './types';
 import { HIDDEN_MOBILE_HEADERS } from '../../constants';
 import { PaintBrushIcon } from '@heroicons/react/24/outline';
+import { DESIGN_TYPE_LABELS, DesignType } from '../../utils/designItems';
 
 // Helper to check if a header should be hidden on mobile (Only applied in Desktop View now)
 const isHiddenOnDesktopMobileView = (header: string) => HIDDEN_MOBILE_HEADERS.includes(header);
@@ -149,7 +150,7 @@ const renderTextContent = (cell: any) => {
         : (typeof cell === 'string' ? cell : '');
 }
 
-const ItemDesignButton = ({ productName, recordId, designItemKey, hasDesign, hasDesignFiles, designFileCount, onDesignClick }: { productName?: string; recordId?: string; designItemKey?: string; hasDesign?: boolean; hasDesignFiles?: boolean; designFileCount?: number; onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void }) => {
+const ItemDesignButton = ({ productName, recordId, designItemKey, designType, hasDesign, hasDesignFiles, designFileCount, onDesignClick }: { productName?: string; recordId?: string; designItemKey?: string; designType?: DesignType | null; hasDesign?: boolean; hasDesignFiles?: boolean; designFileCount?: number; onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void }) => {
     if (!productName || !onDesignClick) return null;
     const colorClass = hasDesignFiles
         ? 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300'
@@ -157,15 +158,22 @@ const ItemDesignButton = ({ productName, recordId, designItemKey, hasDesign, has
             ? 'text-pink-600 hover:bg-pink-50 hover:text-pink-700 dark:text-pink-400 dark:hover:bg-pink-900/30 dark:hover:text-pink-300'
             : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-300';
     return (
+        <div className="mt-1 flex w-fit flex-wrap items-center gap-1">
         <button
             type="button"
             onClick={() => onDesignClick(productName, recordId, designItemKey)}
-            className={`mt-1 inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium transition-colors ${colorClass}`}
+            className={`inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium transition-colors ${colorClass}`}
             title={hasDesignFiles ? `Design folder has ${designFileCount || 0} file(s)` : hasDesign ? 'Design folder exists, no files yet' : 'Open design folder'}
         >
             <PaintBrushIcon className="h-3.5 w-3.5" />
             <span>Design</span>
         </button>
+        {designType && (
+            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${designType === 'TEAM' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
+                {DESIGN_TYPE_LABELS[designType]}
+            </span>
+        )}
+        </div>
     );
 };
 
@@ -340,7 +348,7 @@ const DesktopRow = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                                                                 SKU: <span className="ml-1 truncate">{it.sku}</span>
                                                             </span>
                                                         )}
-                                                        <ItemDesignButton productName={it.designProductName || it.name} recordId={it.designRecordId || cell.id} designItemKey={it.designItemKey} hasDesign={it.hasDesign} hasDesignFiles={it.hasDesignFiles} designFileCount={it.designFileCount} onDesignClick={onDesignClick} />
+                                                        <ItemDesignButton productName={it.designProductName || it.name} recordId={it.designRecordId || cell.id} designItemKey={it.designItemKey} designType={it.designType} hasDesign={it.hasDesign} hasDesignFiles={it.hasDesignFiles} designFileCount={it.designFileCount} onDesignClick={onDesignClick} />
                                                     </div>
                                                     {detailLines.map((line: string, li: number) => (
                                                         <p key={li} className={`text-xs leading-4 whitespace-normal break-words ${line.startsWith('Personalization:') ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`}>
