@@ -122,6 +122,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
     const [editFor, setEditFor] = useState<string | null>(null);
     const [designProducts, setDesignProducts] = useState<Product[]>([]);
     const [designClock, setDesignClock] = useState(() => Date.now());
+    const [showOverdueDetails, setShowOverdueDetails] = useState(false);
     const [pendingDesign, setPendingDesign] = useState<{ productName: string; recordId: string; designItemKey: string } | null>(null);
 
     const editRecord = editFor ? allRecords.find(r => r.id === editFor) || null : null;
@@ -410,7 +411,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
         const orderId = orderIdIdx !== -1 ? String(row[orderIdIdx] || 'N/A') : 'N/A';
         return productCell.items
             .filter((item: any) => item.designOverdue)
-            .map((item: any) => ({ orderId, productName: item.name || 'Sản phẩm', overdueMs: Number(item.designOverdueMs || 0) }));
+            .map((item: any) => ({ recordId: productCell.id as string | undefined, orderId, productName: item.name || 'Sản phẩm', overdueMs: Number(item.designOverdueMs || 0) }));
         // Keep the warning global even when the table is filtered by day, source, status or search.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [processedData.orders.rows, designProducts, allRecords, designClock, productIdx, orderIdIdx, statusIdx]);
@@ -621,18 +622,49 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                     <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
                         <div className="flex items-start gap-3">
                             <span className="mt-0.5 text-lg" aria-hidden="true">⚠</span>
-                            <div className="min-w-0">
-                                <p className="text-sm font-bold">{overdueDesignItems.length} Design đang làm trễ</p>
-                                <p className="mt-0.5 text-xs text-red-700 dark:text-red-400">Folder đã được tạo hơn 2 ngày nhưng vẫn chưa có file Design.</p>
-                                <p className="mt-1 truncate text-xs font-medium">
-                                    {overdueDesignItems.slice(0, 5).map(item => `#${item.orderId} (${formatOverdueTime(item.overdueMs)})`).join(' · ')}
-                                    {overdueDesignItems.length > 5 ? ` · +${overdueDesignItems.length - 5} mục khác` : ''}
-                                </p>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                    <div>
+                                        <p className="text-sm font-bold">{overdueDesignItems.length} Design đang làm trễ</p>
+                                        <p className="mt-0.5 text-xs text-red-700 dark:text-red-400">Folder đã được tạo hơn 2 ngày nhưng vẫn chưa có file Design.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowOverdueDetails(value => !value)}
+                                        className="shrink-0 rounded-md border border-red-300 bg-white/70 px-2.5 py-1 text-xs font-bold text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300 dark:hover:bg-red-900/50"
+                                    >
+                                        {showOverdueDetails ? 'Thu gọn' : `Xem chi tiết (${overdueDesignItems.length})`}
+                                    </button>
+                                </div>
+                                {!showOverdueDetails && (
+                                    <p className="mt-1 truncate text-xs font-medium">
+                                        {overdueDesignItems.slice(0, 5).map(item => `#${item.orderId} (${formatOverdueTime(item.overdueMs)})`).join(' · ')}
+                                        {overdueDesignItems.length > 5 ? ` · +${overdueDesignItems.length - 5} mục khác` : ''}
+                                    </p>
+                                )}
+                                {showOverdueDetails && (
+                                    <div className="mt-3 max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                                        {overdueDesignItems.map((item, index) => (
+                                            <div key={`${item.recordId || item.orderId}-${index}`} className="flex items-center gap-3 rounded-md border border-red-200/80 bg-white/70 px-3 py-2 text-xs dark:border-red-900/70 dark:bg-red-950/40">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => item.recordId && handleViewOrderDetails(item.recordId)}
+                                                    disabled={!item.recordId}
+                                                    className="w-28 shrink-0 text-left font-bold text-red-700 hover:underline disabled:no-underline dark:text-red-300"
+                                                >
+                                                    #{item.orderId}
+                                                </button>
+                                                <span className="min-w-0 flex-1 truncate text-red-800 dark:text-red-200" title={item.productName}>{item.productName}</span>
+                                                <span className="shrink-0 rounded bg-red-100 px-2 py-0.5 font-bold text-red-700 dark:bg-red-900/60 dark:text-red-300">Trễ {formatOverdueTime(item.overdueMs)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 )}
-                <div style={{ height: overdueDesignItems.length > 0 ? 'calc(100vh - 300px)' : 'calc(100vh - 205px)' }}>
+                <div style={{ height: overdueDesignItems.length > 0 ? (showOverdueDetails ? 'max(240px, calc(100vh - 560px))' : 'calc(100vh - 300px)') : 'calc(100vh - 205px)' }}>
                     <Suspense fallback={<LoadingSpinner variant="card" count={5} />}>
                         <DataTable
                             headers={displayHeaders}
