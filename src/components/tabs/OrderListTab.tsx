@@ -232,16 +232,22 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                 const rec = allRecords.find(r => r.id === recordId);
                 const previousRequests = designRequestsOf(rec?.details);
                 const previousTypes = designTypesOf(rec?.details);
+                const previousOrderNote = String((rec?.details as any)?.orderNote || '').trim();
+                const outsourceOrderNote = previousOrderNote.toLocaleLowerCase('vi').includes('des làm ngoài')
+                    ? previousOrderNote
+                    : [previousOrderNote, 'des làm ngoài'].filter(Boolean).join('\n');
                 const now = new Date().toISOString();
                 const details = rec?.details ? {
                     ...rec.details,
                     designRequestedAt: now,
                     ...(designItemKey ? { designRequests: { ...previousRequests, [designItemKey]: now } } : {}),
                     ...(designItemKey && designType ? { designTypes: { ...previousTypes, [designItemKey]: designType } } : {}),
+                    ...(designType === 'OUTSOURCE' ? { orderNote: outsourceOrderNote } : {}),
                 } : {
                     designRequestedAt: now,
                     ...(designItemKey ? { designRequests: { [designItemKey]: now } } : {}),
                     ...(designItemKey && designType ? { designTypes: { [designItemKey]: designType } } : {}),
+                    ...(designType === 'OUTSOURCE' ? { orderNote: outsourceOrderNote } : {}),
                 };
                 await updateOrderFields(recordId, { details });
                 setRecords(prev => prev.map(r => r.id === recordId ? { ...r, details: details as any } : r));
