@@ -29,13 +29,14 @@ const Tabs: React.FC = () => {
         return true;
       }
       if (role === 'design') {
-        return tab === 'Overview' || tab === 'Order List' || tab === 'Products';
+        return tab === 'Overview' || tab === 'Order List' || tab === 'Design';
       }
 
       // User role - check permissions
       switch (tab) {
         case 'Overview':
         case 'Order List':
+        case 'Design':
         case 'Support':
           return permissions.viewSales;
 

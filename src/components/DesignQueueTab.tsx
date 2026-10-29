@@ -6,9 +6,13 @@ import { getHighResImageUrl } from '../utils/imageUtils';
 import { decodeHTMLEntities } from '../utils/htmlDecode';
 import { ORDER_STATUS_CLASSES, ORDER_STATUS_LABELS } from '../constants/orderStatus';
 import { Product, fetchAllProducts } from '../services/productService';
+import { updateOrderFields } from '../services/firebaseService';
+import { useDashboard } from '../contexts/DashboardContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { DESIGN_TYPE_LABELS, DesignType, designTypeForItem, hasDesignRequestForItem, makeDesignItemKey, productMatchesDesignItem } from '../utils/designItems';
+import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, hasDesignRequestForItem, makeDesignItemKey, productMatchesDesignItem } from '../utils/designItems';
 import { captureProductsReturnState } from '../utils/productReturnState';
+
+type DesignView = 'missing' | 'team' | 'outsource';
 
 type DesignTask = {
   key: string;
@@ -19,23 +23,22 @@ type DesignTask = {
   personalization: string;
   quantity: number;
   image?: string;
-  fullImage?: string;
   account: string;
   status: string;
   dtLocal: string;
   designItemKey: string;
   designType: DesignType | null;
+  requested: boolean;
+  match?: Product;
 };
-
-const ACTIVE_STATUSES = new Set(['DESIGN_REQUESTED', 'DESIGNING']);
-const statusLabel = (status: string) => status === 'DESIGN_REQUESTED' ? 'Design' : ORDER_STATUS_LABELS[status] || status;
 
 const fmtTime = (iso: string, timeZone: string) => {
   try {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('vi-VN', {
       timeZone,
-      month: '2-digit',
       day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     }).format(new Date(iso));
@@ -51,238 +54,225 @@ const DesignQueueTab: React.FC<{
 }> = ({ records, timeZone, onViewOrderDetails }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setRecords } = useDashboard();
   const { addNotification } = useNotification();
   const [products, setProducts] = useState<Product[] | null>(null);
+  const [activeView, setActiveView] = useState<DesignView>('missing');
+  const [search, setSearch] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'active' | 'designing' | 'all'>('active');
-  const [folderFilter, setFolderFilter] = useState<'all' | 'missing' | 'matched'>('all');
+  const [pendingTask, setPendingTask] = useState<DesignTask | null>(null);
+  const [assigning, setAssigning] = useState(false);
 
-  const tasks = useMemo<DesignTask[]>(() => {
-    return records
-      .filter((r) => r.kind === 'order' && r.id && r.order_id && ((r.details as any)?.designRequestedAt || (r.order_status || 'NEW') === 'DESIGNING'))
-      .flatMap((r) => {
-        const items = r.details?.items?.length
-          ? r.details.items
-          : [{
-              name: r.product_name || 'Untitled product',
-              variant: '',
-              personalization: '',
-              quantity: 1,
-              image: undefined,
-            }];
-        return items.map((item, index) => {
-          const productName = decodeHTMLEntities(item.name || r.product_name || 'Untitled product');
-          const image = getHighResImageUrl(item.image);
-          const designItemKey = makeDesignItemKey(r.id, index);
-          const itemRequested = hasDesignRequestForItem(r.details, designItemKey);
-          if (!itemRequested && (r.order_status || 'NEW') !== 'DESIGNING') return null;
-          return {
-            key: `${r.id}-${index}`,
-            recordId: r.id!,
-            orderId: r.order_id || 'N/A',
-            productName,
-            variant: decodeHTMLEntities(item.variant || ''),
-            personalization: item.personalization || '',
-            quantity: item.quantity || 1,
-            image,
-            fullImage: image,
-            account: r.account,
-            status: itemRequested ? 'DESIGN_REQUESTED' : r.order_status || 'NEW',
-            dtLocal: r.dt_local,
-            designItemKey,
-            designType: designTypeForItem(r.details, designItemKey),
-          };
-        }).filter(Boolean) as DesignTask[];
-      })
-      .sort((a, b) => {
-        const aActive = ACTIVE_STATUSES.has(a.status) ? 0 : 1;
-        const bActive = ACTIVE_STATUSES.has(b.status) ? 0 : 1;
-        if (aActive !== bActive) return aActive - bActive;
-        return new Date(b.dtLocal).getTime() - new Date(a.dtLocal).getTime();
+  const tasks = useMemo<DesignTask[]>(() => records
+    .filter((record) => record.kind === 'order' && record.id && record.order_id)
+    .flatMap((record) => {
+      const items = record.details?.items?.length
+        ? record.details.items
+        : [{ name: record.product_name || 'Untitled product', variant: '', personalization: '', quantity: 1, image: undefined }];
+
+      return items.map((item, index) => {
+        const designItemKey = makeDesignItemKey(record.id, index);
+        return {
+          key: `${record.id}-${index}`,
+          recordId: record.id!,
+          orderId: record.order_id || 'N/A',
+          productName: decodeHTMLEntities(item.name || record.product_name || 'Untitled product'),
+          variant: decodeHTMLEntities(item.variant || ''),
+          personalization: item.personalization || '',
+          quantity: item.quantity || 1,
+          image: getHighResImageUrl(item.image),
+          account: record.account,
+          status: record.order_status || 'NEW',
+          dtLocal: record.dt_local,
+          designItemKey,
+          designType: designTypeForItem(record.details, designItemKey),
+          requested: hasDesignRequestForItem(record.details, designItemKey),
+        };
       });
-  }, [records]);
+    }), [records]);
 
   useEffect(() => {
-    fetchAllProducts(1000).then(setProducts).catch(() => setProducts([]));
+    let cancelled = false;
+    fetchAllProducts(1000)
+      .then((items) => { if (!cancelled) setProducts(items); })
+      .catch(() => { if (!cancelled) setProducts([]); });
+    return () => { cancelled = true; };
   }, []);
 
-  const taskWithMatches = useMemo(() => {
-    return tasks.map((task) => {
-      const match = products
-        ?.filter((product) => productMatchesDesignItem(product, task.designItemKey))[0];
-      return { ...task, match };
-    });
-  }, [tasks, products]);
+  const tasksWithFolders = useMemo(() => tasks.map((task) => ({
+    ...task,
+    match: products?.find((product) => productMatchesDesignItem(product, task.designItemKey)),
+  })), [tasks, products]);
 
-  const activeCount = taskWithMatches.filter((t) => ACTIVE_STATUSES.has(t.status)).length;
-  const missingCount = taskWithMatches.filter((t) => ACTIVE_STATUSES.has(t.status) && !t.match).length;
-  const matchedCount = taskWithMatches.filter((t) => ACTIVE_STATUSES.has(t.status) && !!t.match).length;
+  const missingTasks = useMemo(() => tasksWithFolders.filter((task) => task.status === 'NEW' && !task.match), [tasksWithFolders]);
+  const teamTasks = useMemo(() => tasksWithFolders.filter((task) => task.designType === 'TEAM'), [tasksWithFolders]);
+  const outsourceTasks = useMemo(() => tasksWithFolders.filter((task) => task.designType === 'OUTSOURCE'), [tasksWithFolders]);
 
-  const visibleTasks = taskWithMatches.filter((task) => {
-    if (statusFilter === 'active' && !ACTIVE_STATUSES.has(task.status)) return false;
-    if (statusFilter === 'designing' && task.status !== 'DESIGNING') return false;
-    if (folderFilter === 'missing' && task.match) return false;
-    if (folderFilter === 'matched' && !task.match) return false;
-    return true;
-  });
+  const activeTasks = activeView === 'missing' ? missingTasks : activeView === 'team' ? teamTasks : outsourceTasks;
+  const visibleTasks = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return activeTasks
+      .filter((task) => !query || task.orderId.toLowerCase().includes(query) || task.productName.toLowerCase().includes(query) || task.account.toLowerCase().includes(query))
+      .sort((a, b) => new Date(b.dtLocal).getTime() - new Date(a.dtLocal).getTime());
+  }, [activeTasks, search]);
 
-  useEffect(() => {
-    if (products === null || activeCount === 0) return;
-    const key = `designQueueNotice:${activeCount}:${missingCount}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, '1');
-    addNotification(`${activeCount} design item(s) need review. ${missingCount} missing folder.`, 'info');
-  }, [activeCount, missingCount, products, addNotification]);
-
-  const openDesign = (task: DesignTask, match?: Product) => {
+  const openDesign = (task: DesignTask) => {
     const returnPath = `${location.pathname}${location.search}${location.hash}`;
     captureProductsReturnState(returnPath);
     const params = new URLSearchParams({ designOrder: task.recordId, designItem: task.designItemKey });
-    const qs = `?${params.toString()}`;
-    if (match) {
-      navigate(`/products/c/${match.categoryId || 'uncategorized'}/f/${match.id}${qs}`, { state: { from: returnPath } });
+    if (task.match) {
+      navigate(`/products/c/${task.match.categoryId || 'uncategorized'}/f/${task.match.id}?${params.toString()}`, { state: { from: returnPath } });
       return;
     }
     navigate(`/products?design=${encodeURIComponent(task.productName)}&${params.toString()}`, { state: { from: returnPath } });
   };
 
+  const assignDesign = async (task: DesignTask, designType: DesignType) => {
+    const record = records.find((item) => item.id === task.recordId);
+    if (!record) return;
+    setAssigning(true);
+    try {
+      const previousRequests = designRequestsOf(record.details);
+      const previousTypes = designTypesOf(record.details);
+      const previousOrderNote = String((record.details as any)?.orderNote || '').trim();
+      const outsourceOrderNote = previousOrderNote.toLocaleLowerCase('vi').includes('des làm ngoài')
+        ? previousOrderNote
+        : [previousOrderNote, 'des làm ngoài'].filter(Boolean).join('\n');
+      const now = new Date().toISOString();
+      const details = {
+        ...((record.details || {}) as any),
+        designRequestedAt: now,
+        designRequests: { ...previousRequests, [task.designItemKey]: now },
+        designTypes: { ...previousTypes, [task.designItemKey]: designType },
+        ...(designType === 'OUTSOURCE' ? { orderNote: outsourceOrderNote } : {}),
+      };
+      await updateOrderFields(task.recordId, { details });
+      setRecords((current) => current.map((item) => item.id === task.recordId ? { ...item, details } : item));
+      setPendingTask(null);
+      openDesign({ ...task, designType });
+    } catch (error) {
+      console.error('Failed to assign design:', error);
+      addNotification('Không thể phân loại Design. Vui lòng thử lại.', 'error');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const views: { key: DesignView; label: string; description: string; count: number; tone: string; activeTone: string }[] = [
+    { key: 'missing', label: 'New chưa có Design', description: 'Đơn New chưa tạo folder', count: missingTasks.length, tone: 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200', activeTone: 'ring-2 ring-rose-500' },
+    { key: 'team', label: 'Team làm', description: 'Design do team phụ trách', count: teamTasks.length, tone: 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200', activeTone: 'ring-2 ring-blue-500' },
+    { key: 'outsource', label: 'Làm ngoài', description: 'Design giao bên ngoài', count: outsourceTasks.length, tone: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200', activeTone: 'ring-2 ring-amber-500' },
+  ];
+
   return (
-    <div className="p-4 md:p-6 space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Design Queue</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Assigned design items, grouped by order item.</p>
-        </div>
-        <div className="grid grid-cols-3 gap-3 min-w-0 lg:min-w-[420px]">
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Active</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{activeCount}</p>
+    <div className="min-h-full bg-slate-50 p-4 dark:bg-gray-900 md:p-6">
+      <div className="mx-auto max-w-[1600px] space-y-6">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="border-b border-slate-100 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 px-5 py-6 text-white dark:border-gray-700 md:px-7">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300">Design workspace</p>
+            <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h1 className="text-2xl font-black tracking-tight md:text-3xl">Quản lý Design</h1>
+                <p className="mt-1 max-w-2xl text-sm text-slate-300">Theo dõi đơn New chưa có Design và phân loại khối lượng Team làm / Làm ngoài trên cùng một màn hình.</p>
+              </div>
+              <div className="relative w-full lg:w-80">
+                <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm order, sản phẩm, shop..." className="h-10 w-full rounded-xl border border-white/15 bg-white/10 pl-10 pr-3 text-sm text-white outline-none placeholder:text-slate-400 focus:border-cyan-400 focus:bg-white/15" />
+              </div>
+            </div>
           </div>
-          <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 p-3">
-            <p className="text-xs font-medium text-amber-700 dark:text-amber-300">Missing Folder</p>
-            <p className="mt-1 text-2xl font-bold text-amber-800 dark:text-amber-200">{missingCount}</p>
-          </div>
-          <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-900/20 p-3">
-            <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Matched</p>
-            <p className="mt-1 text-2xl font-bold text-emerald-800 dark:text-emerald-200">{matchedCount}</p>
-          </div>
-        </div>
-      </div>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="inline-flex w-fit rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1">
-          {[
-            ['active', 'Active'],
-            ['designing', 'Designing'],
-            ['all', 'All'],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setStatusFilter(key as typeof statusFilter)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${statusFilter === key ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}`}
-            >
-              {label}
-            </button>
-          ))}
+          <div className="grid gap-3 p-4 md:grid-cols-3 md:p-6">
+            {views.map((view) => (
+              <button key={view.key} type="button" onClick={() => setActiveView(view.key)} className={`rounded-xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${view.tone} ${activeView === view.key ? view.activeTone : ''}`}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-bold">{view.label}</p>
+                    <p className="mt-1 text-xs opacity-70">{view.description}</p>
+                  </div>
+                  <span className="text-3xl font-black tabular-nums">{view.count}</span>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="inline-flex w-fit rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1">
-          {[
-            ['all', 'All folders'],
-            ['missing', 'Missing'],
-            ['matched', 'Matched'],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setFolderFilter(key as typeof folderFilter)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${folderFilter === key ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
 
-      {visibleTasks.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-12 text-center">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-200">No design items in this date range.</p>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Try changing the date filter or opening Order List.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-black text-slate-900 dark:text-white">{views.find((view) => view.key === activeView)?.label}</h2>
+            <p className="text-sm text-slate-500 dark:text-gray-400">Đang hiển thị {visibleTasks.length} item</p>
+          </div>
+          {search && <button type="button" onClick={() => setSearch('')} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">Xóa tìm kiếm</button>}
         </div>
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+
+        {products === null ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {[0, 1, 2, 3, 4, 5].map((item) => <div key={item} className="h-56 animate-pulse rounded-2xl bg-slate-200 dark:bg-gray-800" />)}
+          </div>
+        ) : visibleTasks.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-gray-700 dark:bg-gray-800">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl dark:bg-emerald-900/30">✓</div>
+            <p className="mt-4 font-bold text-slate-900 dark:text-white">Không có item trong nhóm này</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">Thử đổi nhóm hoặc xóa nội dung tìm kiếm.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {visibleTasks.map((task) => {
               const statusClass = ORDER_STATUS_CLASSES[task.status] || ORDER_STATUS_CLASSES.NEW;
               return (
-                <div key={task.key} className="grid gap-3 p-4 md:grid-cols-[72px_minmax(0,1fr)_180px] md:items-center hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                  <div className="flex items-start gap-3 md:block">
+                <article key={task.key} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                  <div className="flex gap-4 p-4">
                     {task.image ? (
-                      <CachedImage
-                        src={task.image}
-                        alt={task.productName}
-                        onClick={() => task.fullImage && setPreviewImage(task.fullImage)}
-                        className="h-16 w-16 rounded-md border border-gray-200 dark:border-gray-600 object-cover cursor-pointer"
-                      />
+                      <CachedImage src={task.image} alt={task.productName} onClick={() => setPreviewImage(task.image || null)} className="h-24 w-24 shrink-0 cursor-zoom-in rounded-xl border border-slate-200 object-cover dark:border-gray-600" />
                     ) : (
-                      <div className="h-16 w-16 rounded-md bg-gray-100 dark:bg-gray-700" />
+                      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xs font-semibold text-slate-400 dark:bg-gray-700">NO IMAGE</div>
                     )}
-                    <div className="md:hidden min-w-0">
-                      <p className="font-mono text-xs text-gray-500 dark:text-gray-400">#{task.orderId}</p>
-                      <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">{task.productName}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <button type="button" onClick={() => onViewOrderDetails(task.recordId)} className="font-mono text-xs font-bold text-blue-600 hover:underline dark:text-blue-400">#{task.orderId}</button>
+                        <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${statusClass}`}>{ORDER_STATUS_LABELS[task.status] || task.status}</span>
+                      </div>
+                      <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-5 text-slate-900 dark:text-white" title={task.productName}>{task.productName}</h3>
+                      <p className="mt-1 truncate text-xs text-slate-500 dark:text-gray-400">{task.account} · SL {task.quantity}</p>
                     </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className="hidden md:flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onViewOrderDetails(task.recordId)}
-                        className="font-mono text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
-                      >
-                        #{task.orderId}
-                      </button>
-                      <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${statusClass}`}>
-                        {statusLabel(task.status)}
-                      </span>
-                      <span className="text-xs text-gray-400">{fmtTime(task.dtLocal, timeZone)}</span>
-                    </div>
-                    <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-white line-clamp-2" title={task.productName}>{task.productName}</p>
-                    <div className="mt-1 space-y-0.5">
-                      {task.variant && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{task.variant}</p>}
-                      {task.personalization && <p className="text-xs font-medium text-amber-700 dark:text-amber-300 line-clamp-2">{task.personalization}</p>}
-                      <p className="text-xs text-gray-400">{task.account} - Qty {task.quantity}</p>
-                      {task.designType && (
-                        <span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold ${task.designType === 'TEAM' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
-                          {DESIGN_TYPE_LABELS[task.designType]}
-                        </span>
-                      )}
+                  <div className="space-y-1 border-t border-slate-100 px-4 py-3 text-xs dark:border-gray-700">
+                    {task.variant && <p className="line-clamp-2 text-slate-500 dark:text-gray-400">{task.variant}</p>}
+                    {task.personalization && <p className="line-clamp-2 font-semibold text-amber-700 dark:text-amber-300">{task.personalization}</p>}
+                    <div className="flex items-center justify-between gap-3 pt-1 text-slate-400">
+                      <span>{fmtTime(task.dtLocal, timeZone)}</span>
+                      <span className={`rounded-full px-2 py-0.5 font-bold ${task.match ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>{task.match ? 'Đã có folder' : 'Chưa có folder'}</span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between gap-2 md:justify-end">
-                    <span className={`rounded-md px-2 py-1 text-xs font-medium ${task.match ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
-                      {task.match ? 'Folder found' : 'Needs folder'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => openDesign(task, task.match)}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M4 20h4.586a1 1 0 00.707-.293l10-10a2.5 2.5 0 00-3.536-3.536l-10 10A1 1 0 005.464 16.879L4 20z" />
-                      </svg>
-                      Design
-                    </button>
+                  <div className="flex gap-2 border-t border-slate-100 p-3 dark:border-gray-700">
+                    <button type="button" onClick={() => onViewOrderDetails(task.recordId)} className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Xem đơn</button>
+                    <button type="button" onClick={() => task.designType || task.match ? openDesign(task) : setPendingTask(task)} className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-700 dark:bg-cyan-600 dark:hover:bg-cyan-500">{task.match ? 'Mở Design' : 'Tạo Design'}</button>
                   </div>
-                </div>
+                </article>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {pendingTask && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4" onClick={() => !assigning && setPendingTask(null)}>
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800" onClick={(event) => event.stopPropagation()}>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Phân loại Design</p>
+            <h3 className="mt-2 text-lg font-black text-slate-900 dark:text-white">Ai sẽ làm Design này?</h3>
+            <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-gray-400">#{pendingTask.orderId} · {pendingTask.productName}</p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button type="button" disabled={assigning} onClick={() => void assignDesign(pendingTask, 'TEAM')} className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Team làm</button>
+              <button type="button" disabled={assigning} onClick={() => void assignDesign(pendingTask, 'OUTSOURCE')} className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Làm ngoài</button>
+            </div>
+            <button type="button" disabled={assigning} onClick={() => setPendingTask(null)} className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700">Hủy</button>
           </div>
         </div>
       )}
 
       {previewImage && (
-        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
-          <img src={previewImage} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 p-4" onClick={() => setPreviewImage(null)}>
+          <img src={previewImage} alt="" className="max-h-full max-w-full rounded-xl object-contain" />
         </div>
       )}
     </div>

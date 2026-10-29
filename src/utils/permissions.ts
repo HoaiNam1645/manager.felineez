@@ -9,11 +9,12 @@ export const getPermittedTabs = (
         if (role === 'owner') return true;
         if (tab === 'Products') return true;
         // Fulfillment staff work the Fulfill screens + Order List (money columns hidden there)
-        if (role === 'fulfillment') return tab === 'Fulfill' || tab === 'Order List' || tab === 'Products';
-        if (role === 'design') return tab === 'Overview' || tab === 'Order List' || tab === 'Products';
+        if (role === 'fulfillment') return tab === 'Fulfill' || tab === 'Order List';
+        if (role === 'design') return tab === 'Overview' || tab === 'Order List' || tab === 'Design';
         switch (tab) {
             case 'Overview':
             case 'Order List':
+            case 'Design':
             case 'Support':
                 return permissions.viewSales;
             case 'Fulfill':

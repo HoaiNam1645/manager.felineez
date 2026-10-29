@@ -5,7 +5,7 @@ import { Tab } from '../types';
 import { useNotification } from './NotificationContext';
 
 // Constants moved here or imported? For now, defining strict types/constants.
-const DEFAULT_TABS: Tab[] = ['Overview', 'Order List', 'Products', 'Support', 'Fulfill', 'KPI'];
+const DEFAULT_TABS: Tab[] = ['Overview', 'Order List', 'Design', 'Products', 'Support', 'Fulfill', 'KPI'];
 
 // --- URL routing: tab <-> path -------------------------------------------------
 // The active menu/tab is encoded in the URL path so views are bookmarkable and
@@ -14,6 +14,7 @@ const DEFAULT_TABS: Tab[] = ['Overview', 'Order List', 'Products', 'Support', 'F
 const TAB_TO_PATH: Record<Tab, string> = {
     'Overview': '/overview',
     'Order List': '/orders',
+    'Design': '/design',
     'Products': '/analytics',
     'Support': '/support',
     'Fulfill': '/fulfill',
@@ -22,6 +23,7 @@ const TAB_TO_PATH: Record<Tab, string> = {
 const PATH_TO_TAB: Record<string, Tab> = {
     'overview': 'Overview',
     'orders': 'Order List',
+    'design': 'Design',
     'analytics': 'Products',
     'support': 'Support',
     'fulfill': 'Fulfill',

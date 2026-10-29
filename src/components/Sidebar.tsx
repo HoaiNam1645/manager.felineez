@@ -13,7 +13,8 @@ import {
     TagIcon,
     UserGroupIcon,
     ChevronDownIcon,
-    ChartBarIcon
+    ChartBarIcon,
+    PaintBrushIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -76,6 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
         switch (tab) {
             case 'Overview': return <HomeIcon className={className} />;
             case 'Order List': return <DocumentTextIcon className={className} />;
+            case 'Design': return <PaintBrushIcon className={className} />;
 
             case 'Support': return <QuestionMarkCircleIcon className={className} />;
             case 'Fulfill': return <TruckIcon className={className} />;

@@ -30,6 +30,7 @@ const TabSettings: React.FC = () => {
             switch (tab) {
                 case 'Overview':
                 case 'Order List':
+                case 'Design':
                 case 'Support':
                 case 'Products':
                     return permissions.viewSales;

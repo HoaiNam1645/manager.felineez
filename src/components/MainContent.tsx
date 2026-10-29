@@ -103,6 +103,17 @@ const MainContent: React.FC<MainContentProps> = ({ onViewOrderDetails, onResyncO
                         <ProductsTab processedData={processedData} />
                     );
 
+                case 'Design':
+                    return (
+                        <ErrorBoundary>
+                            <DesignQueueTab
+                                records={records}
+                                timeZone={timeZone}
+                                onViewOrderDetails={onViewOrderDetails}
+                            />
+                        </ErrorBoundary>
+                    );
+
                 case 'Order List':
                     return (
                         <OrderListTab
