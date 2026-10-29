@@ -45,6 +45,15 @@ const VISIBLE_ORDER_STATUSES = ORDER_STATUSES.filter(status => status !== 'READY
 const normalizeIdeaName = (value?: string | null) => (value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
 const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+const DESIGN_OVERDUE_MS = 2 * 24 * 60 * 60 * 1000;
+
+const formatOverdueTime = (milliseconds: number): string => {
+    const hours = Math.max(1, Math.floor(milliseconds / (60 * 60 * 1000)));
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    if (days === 0) return `${hours} giờ`;
+    return remainingHours > 0 ? `${days} ngày ${remainingHours} giờ` : `${days} ngày`;
+};
 
 const syncDetailsRevenue = (details: Record['details'] | undefined, amount: number, customerName: string): Record['details'] | undefined => {
     if (!details) return undefined;
@@ -112,6 +121,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
     const [mappingSku, setMappingSku] = useState(false);
     const [editFor, setEditFor] = useState<string | null>(null);
     const [designProducts, setDesignProducts] = useState<Product[]>([]);
+    const [designClock, setDesignClock] = useState(() => Date.now());
     const [pendingDesign, setPendingDesign] = useState<{ productName: string; recordId: string; designItemKey: string } | null>(null);
 
     const editRecord = editFor ? allRecords.find(r => r.id === editFor) || null : null;
@@ -157,6 +167,11 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
             .then(products => { if (!cancelled) setDesignProducts(products); })
             .catch(() => { if (!cancelled) setDesignProducts([]); });
         return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
+        const timer = window.setInterval(() => setDesignClock(Date.now()), 60 * 1000);
+        return () => window.clearInterval(timer);
     }, []);
 
     const handleSaveEdit = async (recordId: string, f: EditOrderFields) => {
@@ -304,9 +319,14 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                 const hasDesignFiles = (matchedDesign?.images?.length || 0) > 0;
                 const designFileCount = matchedDesign?.images?.length || 0;
                 const designType = designTypeForItem(record?.details, item.designItemKey);
-                return hasDesign === item.hasDesign && hasDesignFiles === item.hasDesignFiles && designFileCount === item.designFileCount && designType === item.designType
+                const createdAt = matchedDesign?.createdAt ? new Date(matchedDesign.createdAt).getTime() : NaN;
+                const designOverdueMs = hasDesign && !hasDesignFiles && Number.isFinite(createdAt)
+                    ? Math.max(0, designClock - createdAt - DESIGN_OVERDUE_MS)
+                    : 0;
+                const designOverdue = designOverdueMs > 0;
+                return hasDesign === item.hasDesign && hasDesignFiles === item.hasDesignFiles && designFileCount === item.designFileCount && designType === item.designType && designOverdue === item.designOverdue && designOverdueMs === item.designOverdueMs
                     ? item
-                    : { ...item, hasDesign, hasDesignFiles, designFileCount, designType };
+                    : { ...item, hasDesign, hasDesignFiles, designFileCount, designType, designOverdue, designOverdueMs };
             });
             const hasDesign = nextItems.some((item: any) => item.hasDesign);
             if (productCell.hasDesign === hasDesign && nextItems.every((item: any, i: number) => item === productCell.items[i])) return row;
@@ -381,7 +401,16 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
 
         return rows;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [baseRows, statusFilter, designProducts, allRecords]);
+    }, [baseRows, statusFilter, designProducts, allRecords, designClock]);
+
+    const overdueDesignItems = useMemo(() => visibleRows.flatMap(row => {
+        const productCell = productIdx !== -1 ? row[productIdx] as any : null;
+        if (!productCell || !Array.isArray(productCell.items)) return [];
+        const orderId = orderIdIdx !== -1 ? String(row[orderIdIdx] || 'N/A') : 'N/A';
+        return productCell.items
+            .filter((item: any) => item.designOverdue)
+            .map((item: any) => ({ orderId, productName: item.name || 'Sản phẩm', overdueMs: Number(item.designOverdueMs || 0) }));
+    }), [visibleRows, productIdx, orderIdIdx]);
 
     const displayRows = useMemo(() => {
         let rows = visibleRows.map(row => {
@@ -585,7 +614,22 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                         )}
                     </div>
                 </div>
-                <div style={{ height: 'calc(100vh - 205px)' }}>
+                {overdueDesignItems.length > 0 && (
+                    <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+                        <div className="flex items-start gap-3">
+                            <span className="mt-0.5 text-lg" aria-hidden="true">⚠</span>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold">{overdueDesignItems.length} Design đang làm trễ</p>
+                                <p className="mt-0.5 text-xs text-red-700 dark:text-red-400">Folder đã được tạo hơn 2 ngày nhưng vẫn chưa có file Design.</p>
+                                <p className="mt-1 truncate text-xs font-medium">
+                                    {overdueDesignItems.slice(0, 5).map(item => `#${item.orderId} (${formatOverdueTime(item.overdueMs)})`).join(' · ')}
+                                    {overdueDesignItems.length > 5 ? ` · +${overdueDesignItems.length - 5} mục khác` : ''}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <div style={{ height: overdueDesignItems.length > 0 ? 'calc(100vh - 300px)' : 'calc(100vh - 205px)' }}>
                     <Suspense fallback={<LoadingSpinner variant="card" count={5} />}>
                         <DataTable
                             headers={displayHeaders}

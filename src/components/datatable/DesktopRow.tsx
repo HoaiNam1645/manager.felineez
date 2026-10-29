@@ -150,7 +150,13 @@ const renderTextContent = (cell: any) => {
         : (typeof cell === 'string' ? cell : '');
 }
 
-const ItemDesignButton = ({ productName, recordId, designItemKey, designType, hasDesign, hasDesignFiles, designFileCount, onDesignClick }: { productName?: string; recordId?: string; designItemKey?: string; designType?: DesignType | null; hasDesign?: boolean; hasDesignFiles?: boolean; designFileCount?: number; onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void }) => {
+const designOverdueLabel = (milliseconds: number) => {
+    const hours = Math.max(1, Math.floor(milliseconds / 3600000));
+    const days = Math.floor(hours / 24);
+    return days > 0 ? `Trễ ${days} ngày${hours % 24 ? ` ${hours % 24} giờ` : ''}` : `Trễ ${hours} giờ`;
+};
+
+const ItemDesignButton = ({ productName, recordId, designItemKey, designType, designOverdue, designOverdueMs, hasDesign, hasDesignFiles, designFileCount, onDesignClick }: { productName?: string; recordId?: string; designItemKey?: string; designType?: DesignType | null; designOverdue?: boolean; designOverdueMs?: number; hasDesign?: boolean; hasDesignFiles?: boolean; designFileCount?: number; onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void }) => {
     if (!productName || !onDesignClick) return null;
     const colorClass = hasDesignFiles
         ? 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300'
@@ -171,6 +177,11 @@ const ItemDesignButton = ({ productName, recordId, designItemKey, designType, ha
         {designType && (
             <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${designType === 'TEAM' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
                 {DESIGN_TYPE_LABELS[designType]}
+            </span>
+        )}
+        {designOverdue && (
+            <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                {designOverdueLabel(designOverdueMs || 0)}
             </span>
         )}
         </div>
@@ -348,7 +359,7 @@ const DesktopRow = ({ index, style, data }: ListChildComponentProps<RowData>) =>
                                                                 SKU: <span className="ml-1 truncate">{it.sku}</span>
                                                             </span>
                                                         )}
-                                                        <ItemDesignButton productName={it.designProductName || it.name} recordId={it.designRecordId || cell.id} designItemKey={it.designItemKey} designType={it.designType} hasDesign={it.hasDesign} hasDesignFiles={it.hasDesignFiles} designFileCount={it.designFileCount} onDesignClick={onDesignClick} />
+                                                        <ItemDesignButton productName={it.designProductName || it.name} recordId={it.designRecordId || cell.id} designItemKey={it.designItemKey} designType={it.designType} designOverdue={it.designOverdue} designOverdueMs={it.designOverdueMs} hasDesign={it.hasDesign} hasDesignFiles={it.hasDesignFiles} designFileCount={it.designFileCount} onDesignClick={onDesignClick} />
                                                     </div>
                                                     {detailLines.map((line: string, li: number) => (
                                                         <p key={li} className={`text-xs leading-4 whitespace-normal break-words ${line.startsWith('Personalization:') ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`}>
