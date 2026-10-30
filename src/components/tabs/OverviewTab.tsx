@@ -21,7 +21,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ processedData, isSingleDay, h
     const { role, permissions } = useDashboard();
     const isOwner = role === 'owner';
     const canViewFunds = isOwner || permissions.viewFunds;
-    const canViewCost = isOwner || permissions.viewFulfill;
+    const canViewCost = isOwner || (permissions.viewCost ?? permissions.viewFulfill);
     const hiddenValue: KpiValue = { value: '---', direction: 'neutral' };
 
     // Memoize KPI values to prevent recalculation

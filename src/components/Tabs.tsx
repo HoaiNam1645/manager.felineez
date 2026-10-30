@@ -3,6 +3,7 @@ import { Tab } from '../types';
 import { useDashboard } from '../contexts/DashboardContext';
 import { useUI } from '../contexts/UIContext';
 import { TABS_TO_HIDE_ON_MOBILE } from '../constants';
+import { getPermittedTabs } from '../utils/permissions';
 
 const Tabs: React.FC = () => {
   // Get tab customization state from context
@@ -19,40 +20,8 @@ const Tabs: React.FC = () => {
     setIsTabSettingsOpen
   } = useUI();
 
-  // Filter TABS based on permissions
-  const getPermittedTabs = (tabs: Tab[]): Tab[] => {
-    return tabs.filter(tab => {
-      if (role === 'owner') {
-        return true; // Owner sees all
-      }
-      if (tab === 'Products') {
-        return true;
-      }
-      if (role === 'design') {
-        return tab === 'Overview' || tab === 'Order List' || tab === 'Design';
-      }
-
-      // User role - check permissions
-      switch (tab) {
-        case 'Overview':
-        case 'Order List':
-        case 'Design':
-        case 'Support':
-          return permissions.viewSales;
-
-        case 'Fulfill':
-          return permissions.viewFulfill;
-
-
-
-        default:
-          return false;
-      }
-    });
-  };
-
   // Get tabs in custom order, filtered by permissions and visibility
-  const visibleTabs = getPermittedTabs(tabOrder).filter(tab => !hiddenTabs.has(tab));
+  const visibleTabs = getPermittedTabs(tabOrder, role, permissions).filter(tab => !hiddenTabs.has(tab));
 
   // Memoized handlers
   const handleClick = useCallback((tab: Tab) => {

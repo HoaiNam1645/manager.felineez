@@ -57,7 +57,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     // "Order Subs" group: per-factory sent-order screens (/subs/{provider})
     const isSubsActive = currentSeg === 'subs';
     const [subsOpen, setSubsOpen] = useState(isSubsActive);
-    const canSeeSubs = role === 'owner' || role === 'leader' || role === 'fulfillment' || permissions.viewFulfill;
+    const canSeeSubs = role === 'owner' || (typeof permissions.viewOrderSubs === 'boolean'
+        ? permissions.viewOrderSubs
+        : role === 'leader' || role === 'fulfillment' || permissions.viewFulfill);
+    const canManageProducts = role === 'owner' || (typeof permissions.manageProducts === 'boolean'
+        ? permissions.manageProducts
+        : true);
     const SUB_FACTORIES = [
         { label: 'Lemiex', key: 'lemiex' },
         { label: 'MangoTee', key: 'mango' },
@@ -341,7 +346,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
             </nav>
 
             <div className={`border-t border-gray-200 dark:border-gray-700 space-y-2 ${isCollapsed ? 'p-2' : 'p-4'}`}>
-                <button
+                {canManageProducts && <button
                     onClick={() => {
                         const returnPath = `${location.pathname}${location.search}${location.hash}`;
                         captureProductsReturnState(returnPath);
@@ -370,7 +375,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
                             Products Upload
                         </div>
                     )}
-                </button>
+                </button>}
 
                 <button
                     onClick={() => setIsTabSettingsOpen(true)}

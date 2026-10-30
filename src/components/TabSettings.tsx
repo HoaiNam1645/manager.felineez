@@ -3,6 +3,7 @@ import { Tab } from '../types';
 import { useDashboard } from '../contexts/DashboardContext';
 import { useUI } from '../contexts/UIContext';
 import ThemeToggle from './ThemeToggle';
+import { getPermittedTabs } from '../utils/permissions';
 
 
 const TabSettings: React.FC = () => {
@@ -19,31 +20,7 @@ const TabSettings: React.FC = () => {
 
     const [draggedTab, setDraggedTab] = useState<Tab | null>(null);
 
-    // Filter tabs based on permissions
-    const getAvailableTabs = (): Tab[] => {
-        return tabOrder.filter(tab => {
-            // Hardcoded exclusions to match Sidebar
-
-
-            if (role === 'owner') return true;
-
-            switch (tab) {
-                case 'Overview':
-                case 'Order List':
-                case 'Design':
-                case 'Support':
-                case 'Products':
-                    return permissions.viewSales;
-                case 'Fulfill':
-                    return permissions.viewFulfill;
-
-                default:
-                    return false;
-            }
-        });
-    };
-
-    const availableTabs = getAvailableTabs();
+    const availableTabs = getPermittedTabs(tabOrder, role, permissions);
 
     const handleDragStart = (e: React.DragEvent, tab: Tab) => {
         setDraggedTab(tab);

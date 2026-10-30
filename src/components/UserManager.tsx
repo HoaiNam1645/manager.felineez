@@ -18,9 +18,17 @@ import Spinner from './Spinner';
 type RoleLower = 'owner' | 'leader' | 'user' | 'fulfillment' | 'design';
 
 interface UserPermissions {
+  viewOverview: boolean;
+  viewOrders: boolean;
+  viewDesign: boolean;
+  viewProducts: boolean;
+  viewSupport: boolean;
+  viewOrderSubs: boolean;
+  manageProducts: boolean;
   viewSales: boolean;
   viewFunds: boolean;
   viewFulfill: boolean;
+  viewCost: boolean;
   canManageSettings: boolean;
   viewKpi: boolean;
 }
@@ -42,16 +50,69 @@ interface SellerTeamInfo {
 }
 
 const DEFAULT_PERMISSIONS: UserPermissions = {
+  viewOverview: false,
+  viewOrders: false,
+  viewDesign: false,
+  viewProducts: false,
+  viewSupport: false,
+  viewOrderSubs: false,
+  manageProducts: false,
   viewSales: false,
   viewFunds: false,
   viewFulfill: false,
+  viewCost: false,
   canManageSettings: false,
   viewKpi: false,
 };
 
-const PERMISSION_KEYS: (keyof UserPermissions)[] = ['viewSales', 'viewFunds', 'viewFulfill', 'canManageSettings', 'viewKpi'];
-const PERMISSION_LABELS: { [key: string]: string } = {
-  viewSales: 'Sales', viewFunds: 'Funds', viewFulfill: 'Cost', canManageSettings: 'Mail Edit', viewKpi: 'KPI',
+const MENU_PERMISSION_KEYS: (keyof UserPermissions)[] = [
+  'viewOverview', 'viewOrders', 'viewDesign', 'viewProducts', 'viewSupport',
+  'viewFulfill', 'viewKpi', 'viewOrderSubs', 'manageProducts',
+];
+const DATA_PERMISSION_KEYS: (keyof UserPermissions)[] = ['viewSales', 'viewFunds', 'viewCost', 'canManageSettings'];
+const PERMISSION_KEYS: (keyof UserPermissions)[] = [...MENU_PERMISSION_KEYS, ...DATA_PERMISSION_KEYS];
+const PERMISSION_LABELS: Record<keyof UserPermissions, string> = {
+  viewOverview: 'Overview',
+  viewOrders: 'Order List',
+  viewDesign: 'Design',
+  viewProducts: 'Products',
+  viewSupport: 'Support',
+  viewFulfill: 'Fulfill',
+  viewKpi: 'KPI',
+  viewOrderSubs: 'Order Subs',
+  manageProducts: 'Products Upload',
+  viewSales: 'Sales Data',
+  viewFunds: 'Funds',
+  viewCost: 'Cost',
+  canManageSettings: 'Mail Edit',
+};
+
+const hasBooleanPermission = (permissions: Record<string, unknown>, key: keyof UserPermissions) =>
+  typeof permissions[key] === 'boolean';
+
+// Fill new menu permissions from the legacy behavior until each user is saved again.
+const normalizePermissions = (raw: unknown, role: RoleLower): UserPermissions => {
+  const permissions = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
+  const legacySales = permissions.viewSales === true;
+  const legacyFulfill = permissions.viewFulfill === true;
+  const value = (key: keyof UserPermissions, fallback: boolean) =>
+    hasBooleanPermission(permissions, key) ? permissions[key] as boolean : fallback;
+
+  return {
+    viewOverview: value('viewOverview', legacySales || role === 'design'),
+    viewOrders: value('viewOrders', legacySales || role === 'design' || role === 'fulfillment'),
+    viewDesign: value('viewDesign', legacySales || role === 'design'),
+    viewProducts: value('viewProducts', true),
+    viewSupport: value('viewSupport', legacySales),
+    viewFulfill: value('viewFulfill', legacyFulfill || role === 'fulfillment'),
+    viewKpi: value('viewKpi', role === 'leader'),
+    viewOrderSubs: value('viewOrderSubs', legacyFulfill || role === 'leader' || role === 'fulfillment'),
+    manageProducts: value('manageProducts', true),
+    viewSales: value('viewSales', false),
+    viewFunds: value('viewFunds', false),
+    viewCost: value('viewCost', legacyFulfill),
+    canManageSettings: value('canManageSettings', false),
+  };
 };
 
 const ROLE_BADGE: { [r in RoleLower]: string } = {
@@ -212,7 +273,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ mode, user, sellerTeams, 
   const [codesText, setCodesText] = useState(isEdit ? (user!.sellerCodes || []).join(', ') : '');
   const [teamId, setTeamId] = useState(isEdit ? (user!.sellerTeamId ?? '') : (leaderMode ? (leaderTeamId ?? '') : ''));
   const [permissions, setPermissions] = useState<UserPermissions>(
-    isEdit ? { ...DEFAULT_PERMISSIONS, ...user!.permissions } : { ...DEFAULT_PERMISSIONS }
+    isEdit ? normalizePermissions(user!.permissions, user!.role) : { ...DEFAULT_PERMISSIONS }
   );
   const [allowedAccounts, setAllowedAccounts] = useState<string[]>(isEdit ? (user!.allowedAccounts || []) : []);
   const [showAccountPicker, setShowAccountPicker] = useState(false);
@@ -347,10 +408,27 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ mode, user, sellerTeams, 
 
           {!isOwnerRow && (
             <>
-              <div>
-                <label className={labelCls}>Permissions</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-md p-3">
-                  {PERMISSION_KEYS.map(key => (
+              <div className="space-y-3">
+                <div>
+                  <label className={labelCls}>Menu access</label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-md p-3">
+                    {MENU_PERMISSION_KEYS.map(key => (
+                      <label key={key} className="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={permissions[key] || false}
+                          onChange={e => setPermissions(prev => ({ ...prev, [key]: e.target.checked }))}
+                          className="rounded"
+                        />
+                        <span>{PERMISSION_LABELS[key]}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>Data &amp; actions</label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-md p-3">
+                    {DATA_PERMISSION_KEYS.map(key => (
                     <label key={key} className="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-200">
                       <input
                         type="checkbox"
@@ -360,7 +438,8 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ mode, user, sellerTeams, 
                       />
                       <span>{PERMISSION_LABELS[key]}</span>
                     </label>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -445,15 +524,18 @@ const UserManager: React.FC = () => {
         api.get<{ users: any[] }>('/api/users'),
         api.get<{ teams: SellerTeamInfo[] }>('/api/seller-teams'),
       ]);
-      setUsers(list.map((u): UserRow => ({
-        id: u.id,
-        email: u.email,
-        role: u.role === 'OWNER' ? 'owner' : u.role === 'LEADER' ? 'leader' : u.role === 'FULFILLMENT' ? 'fulfillment' : u.role === 'DESIGN' ? 'design' : 'user',
-        permissions: { ...DEFAULT_PERMISSIONS, ...((u.permissions as any) || {}) },
-        allowedAccounts: u.allowedAccounts || [],
-        sellerCodes: Array.isArray(u.sellerCodes) ? u.sellerCodes : [],
-        sellerTeamId: u.sellerTeamId ?? null,
-      })));
+      setUsers(list.map((u): UserRow => {
+        const role: RoleLower = u.role === 'OWNER' ? 'owner' : u.role === 'LEADER' ? 'leader' : u.role === 'FULFILLMENT' ? 'fulfillment' : u.role === 'DESIGN' ? 'design' : 'user';
+        return {
+          id: u.id,
+          email: u.email,
+          role,
+          permissions: normalizePermissions(u.permissions, role),
+          allowedAccounts: u.allowedAccounts || [],
+          sellerCodes: Array.isArray(u.sellerCodes) ? u.sellerCodes : [],
+          sellerTeamId: u.sellerTeamId ?? null,
+        };
+      }));
       setSellerTeams(teams);
     } catch (err: any) {
       console.error(err);
