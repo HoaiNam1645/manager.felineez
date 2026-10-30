@@ -12,7 +12,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, hasDesignRequestForItem, makeDesignItemKey, preferredDesignProduct } from '../utils/designItems';
 import { captureProductsReturnState } from '../utils/productReturnState';
 
-type DesignView = 'missing' | 'team' | 'outsource';
+type DesignView = 'missing' | 'overdue' | 'team' | 'outsource';
 const DESIGN_OVERDUE_MS = 2 * 24 * 60 * 60 * 1000;
 const TERMINAL_STATUSES = new Set(['SHIPPED', 'CANCELLED', 'REFUND']);
 
@@ -124,11 +124,18 @@ const DesignQueueTab: React.FC<{
     return { ...task, match, overdueMs };
   }), [tasks, products, designClock]);
 
-  const missingTasks = useMemo(() => tasksWithFolders.filter((task) => task.status === 'NEW' && !task.match), [tasksWithFolders]);
+  const missingTasks = useMemo(() => tasksWithFolders.filter((task) => task.status === 'NEW' && (!task.match || (task.match.images?.length || 0) === 0)), [tasksWithFolders]);
+  const overdueTasks = useMemo(() => tasksWithFolders.filter((task) => task.overdueMs > 0), [tasksWithFolders]);
   const teamTasks = useMemo(() => tasksWithFolders.filter((task) => task.designType === 'TEAM'), [tasksWithFolders]);
   const outsourceTasks = useMemo(() => tasksWithFolders.filter((task) => task.designType === 'OUTSOURCE'), [tasksWithFolders]);
 
-  const activeTasks = activeView === 'missing' ? missingTasks : activeView === 'team' ? teamTasks : outsourceTasks;
+  const activeTasks = activeView === 'missing'
+    ? missingTasks
+    : activeView === 'overdue'
+      ? overdueTasks
+      : activeView === 'team'
+        ? teamTasks
+        : outsourceTasks;
   const visibleTasks = useMemo(() => {
     const query = search.trim().toLowerCase();
     return activeTasks
@@ -179,7 +186,8 @@ const DesignQueueTab: React.FC<{
   };
 
   const views: { key: DesignView; label: string; description: string; count: number; tone: string; activeTone: string }[] = [
-    { key: 'missing', label: 'New chưa có Design', description: 'Đơn New chưa tạo folder', count: missingTasks.length, tone: 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200', activeTone: 'ring-2 ring-rose-500' },
+    { key: 'missing', label: 'New chưa có Design', description: 'Đơn New chưa có file Design', count: missingTasks.length, tone: 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200', activeTone: 'ring-2 ring-rose-500' },
+    { key: 'overdue', label: 'Trễ Design', description: 'Folder quá 2 ngày chưa có file', count: overdueTasks.length, tone: 'border-red-300 bg-red-50 text-red-800 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-200', activeTone: 'ring-2 ring-red-500' },
     { key: 'team', label: 'Team làm', description: 'Design do team phụ trách', count: teamTasks.length, tone: 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200', activeTone: 'ring-2 ring-blue-500' },
     { key: 'outsource', label: 'Làm ngoài', description: 'Design giao bên ngoài', count: outsourceTasks.length, tone: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200', activeTone: 'ring-2 ring-amber-500' },
   ];
@@ -202,7 +210,7 @@ const DesignQueueTab: React.FC<{
             </div>
           </div>
 
-          <div className="grid gap-3 p-4 md:grid-cols-3 md:p-6">
+          <div className="grid gap-3 p-4 md:grid-cols-2 md:p-6 xl:grid-cols-4">
             {views.map((view) => (
               <button key={view.key} type="button" onClick={() => setActiveView(view.key)} className={`rounded-md border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${view.tone} ${activeView === view.key ? view.activeTone : ''}`}>
                 <div className="flex items-start justify-between gap-4">
