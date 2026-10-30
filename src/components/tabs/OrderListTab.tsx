@@ -123,9 +123,12 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
     const [designProducts, setDesignProducts] = useState<Product[]>([]);
     const [designClock, setDesignClock] = useState(() => Date.now());
     const [showOverdueDetails, setShowOverdueDetails] = useState(false);
-    const [pendingDesign, setPendingDesign] = useState<{ productName: string; recordId: string; designItemKey: string } | null>(null);
+    const [pendingDesign, setPendingDesign] = useState<{ productName: string; recordId: string; designItemKey: string; openAfterSave: boolean } | null>(null);
 
     const editRecord = editFor ? allRecords.find(r => r.id === editFor) || null : null;
+    const pendingDesignType = pendingDesign
+        ? designTypeForItem(allRecords.find(record => record.id === pendingDesign.recordId)?.details, pendingDesign.designItemKey)
+        : null;
     const rawOrderStatus = searchParams.get('orderStatus');
     const statusFilter: StatusFilter = rawOrderStatus === 'ALL' || rawOrderStatus === 'NO_TRACKING' || VISIBLE_ORDER_STATUSES.includes(rawOrderStatus as any)
         ? rawOrderStatus as StatusFilter
@@ -221,7 +224,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
         setRecords(prev => prev.map(r => r.id === recordId ? { ...r, details: details as any } : r));
     };
 
-    const openDesign = async (productName: string, recordId?: string, designItemKey?: string, designType?: DesignType) => {
+    const openDesign = async (productName: string, recordId?: string, designItemKey?: string, designType?: DesignType, navigateAfterSave = true) => {
         const q = productName.trim();
         const params = new URLSearchParams();
         if (q) params.set('design', q);
@@ -236,18 +239,23 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                 const outsourceOrderNote = previousOrderNote.toLocaleLowerCase('vi').includes('des làm ngoài')
                     ? previousOrderNote
                     : [previousOrderNote, 'des làm ngoài'].filter(Boolean).join('\n');
+                const hasOtherOutsourceItem = Object.entries(previousTypes).some(([key, value]) => key !== designItemKey && value === 'OUTSOURCE');
+                const teamOrderNote = hasOtherOutsourceItem
+                    ? previousOrderNote
+                    : previousOrderNote.split('\n').filter(line => line.trim().toLocaleLowerCase('vi') !== 'des làm ngoài').join('\n').trim();
+                const nextOrderNote = designType === 'OUTSOURCE' ? outsourceOrderNote : teamOrderNote;
                 const now = new Date().toISOString();
                 const details = rec?.details ? {
                     ...rec.details,
                     designRequestedAt: now,
                     ...(designItemKey ? { designRequests: { ...previousRequests, [designItemKey]: now } } : {}),
                     ...(designItemKey && designType ? { designTypes: { ...previousTypes, [designItemKey]: designType } } : {}),
-                    ...(designType === 'OUTSOURCE' ? { orderNote: outsourceOrderNote } : {}),
+                    ...(designType ? { orderNote: nextOrderNote } : {}),
                 } : {
                     designRequestedAt: now,
                     ...(designItemKey ? { designRequests: { [designItemKey]: now } } : {}),
                     ...(designItemKey && designType ? { designTypes: { [designItemKey]: designType } } : {}),
-                    ...(designType === 'OUTSOURCE' ? { orderNote: outsourceOrderNote } : {}),
+                    ...(designType ? { orderNote: nextOrderNote } : {}),
                 };
                 await updateOrderFields(recordId, { details });
                 setRecords(prev => prev.map(r => r.id === recordId ? { ...r, details: details as any } : r));
@@ -255,17 +263,18 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                 console.error('Failed to assign design order:', e);
             }
         }
+        if (!navigateAfterSave) return;
         const returnPath = `${location.pathname}${location.search}${location.hash}`;
         captureProductsReturnState(returnPath);
         navigate(`/products${params.toString() ? `?${params.toString()}` : ''}`, { state: { from: returnPath } });
     };
 
-    const goDesign = (productName: string, recordId?: string, designItemKey?: string) => {
+    const goDesign = (productName: string, recordId?: string, designItemKey?: string, manageType = false) => {
         if (recordId && designItemKey) {
             const rec = allRecords.find(r => r.id === recordId);
             const existingType = designTypeForItem(rec?.details, designItemKey);
-            if (!existingType) {
-                setPendingDesign({ productName, recordId, designItemKey });
+            if (!existingType || manageType) {
+                setPendingDesign({ productName, recordId, designItemKey, openAfterSave: !manageType });
                 return;
             }
         }
@@ -426,24 +435,26 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
         let rows = visibleRows.map(row => {
             const next = [...row];
             const productCell = productIdx !== -1 ? row[productIdx] as any : null;
-            const unclassifiedItem = Array.isArray(productCell?.items)
-                ? productCell.items.find((item: any) => !item.designType)
-                : null;
-            if (actionsIdx !== -1 && unclassifiedItem) {
+            const designItems = Array.isArray(productCell?.items) ? productCell.items : [];
+            if (actionsIdx !== -1 && designItems.length > 0) {
                 const actionCell = row[actionsIdx] as any;
                 const actions = Array.isArray(actionCell?.actions)
                     ? actionCell.actions.filter((action: any) => action.type !== 'design')
                     : [];
+                const designActions = designItems.map((item: any, index: number) => {
+                    const typeLabel = item.designType === 'TEAM' ? 'Team' : item.designType === 'OUTSOURCE' ? 'Ngoài' : 'Chọn';
+                    return {
+                        type: 'design',
+                        label: designItems.length > 1 ? `Des ${index + 1}: ${typeLabel}` : (item.designType ? `Des: ${typeLabel}` : 'Phân loại Des'),
+                        productName: item.designProductName || item.name || '',
+                        recordId: item.designRecordId || productCell?.id,
+                        designItemKey: item.designItemKey,
+                    };
+                });
                 next[actionsIdx] = {
                     ...actionCell,
                     type: 'action_group',
-                    actions: [...actions, {
-                        type: 'design',
-                        label: 'Phân loại Des',
-                        productName: unclassifiedItem.designProductName || unclassifiedItem.name || '',
-                        recordId: unclassifiedItem.designRecordId || productCell?.id,
-                        designItemKey: unclassifiedItem.designItemKey,
-                    }],
+                    actions: [...actions, ...designActions],
                 };
             }
             if (orderIdIdx !== -1) {
@@ -781,9 +792,9 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
             {pendingDesign && (
                 <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4" onClick={() => setPendingDesign(null)}>
                     <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-base font-bold text-gray-900 dark:text-white">Phân loại Design</h3>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white">{pendingDesignType ? 'Cập nhật loại Design' : 'Phân loại Design'}</h3>
                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            Chọn người thực hiện Design cho item này.
+                            {pendingDesignType ? `Hiện tại: ${pendingDesignType === 'TEAM' ? 'Team làm' : 'Làm ngoài'}. Chọn loại mới cho item này.` : 'Chọn người thực hiện Design cho item này.'}
                         </p>
                         <div className="mt-4 grid grid-cols-2 gap-3">
                             <button
@@ -791,9 +802,9 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                                 onClick={() => {
                                     const selection = pendingDesign;
                                     setPendingDesign(null);
-                                    void openDesign(selection.productName, selection.recordId, selection.designItemKey, 'TEAM');
+                                    void openDesign(selection.productName, selection.recordId, selection.designItemKey, 'TEAM', selection.openAfterSave);
                                 }}
-                                className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                                className={`rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 ${pendingDesignType === 'TEAM' ? 'ring-2 ring-blue-500' : ''}`}
                             >
                                 Team làm
                             </button>
@@ -802,9 +813,9 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                                 onClick={() => {
                                     const selection = pendingDesign;
                                     setPendingDesign(null);
-                                    void openDesign(selection.productName, selection.recordId, selection.designItemKey, 'OUTSOURCE');
+                                    void openDesign(selection.productName, selection.recordId, selection.designItemKey, 'OUTSOURCE', selection.openAfterSave);
                                 }}
-                                className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                                className={`rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300 ${pendingDesignType === 'OUTSOURCE' ? 'ring-2 ring-amber-500' : ''}`}
                             >
                                 Làm ngoài
                             </button>

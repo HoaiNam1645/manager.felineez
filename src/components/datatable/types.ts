@@ -22,7 +22,7 @@ export interface RowData {
     onFfNoteClick?: (id: string, value: string) => void;
     onEditClick?: (id: string) => void;
     onFulfillClick?: (id: string) => void;
-    onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void;
+    onDesignClick?: (productName: string, recordId?: string, designItemKey?: string, manageType?: boolean) => void;
     onDeleteClick?: (id: string) => void;
     onImageClick: (src: string) => void;
     onRowHeightChange?: (index: number, height: number) => void;
@@ -42,7 +42,7 @@ export interface DataTableProps {
     onSaveFfNote?: (recordId: string, note: string) => Promise<void>;
     onEditOrder?: (recordId: string) => void;
     onFulfillOrder?: (recordId: string) => void;
-    onDesignOrder?: (productName: string, recordId?: string, designItemKey?: string) => void;
+    onDesignOrder?: (productName: string, recordId?: string, designItemKey?: string, manageType?: boolean) => void;
     onDeleteOrder?: (recordId: string) => void;
     autoHeight?: boolean;
     mobileRowHeight?: number;

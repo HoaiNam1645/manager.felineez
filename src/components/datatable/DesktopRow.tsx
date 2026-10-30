@@ -19,7 +19,7 @@ const COLUMN_WIDTHS: { [h: string]: number } = {
     'Actions': 400, 'DateTime': 130, 'Account': 140,
 };
 
-const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<string>, onResyncClick: (id: string) => void, onViewOrderDetails?: (id: string) => void, onViewDayDetails?: (date: string) => void, rowData?: any[], onFulfillClick?: (id: string) => void, onEditClick?: (id: string) => void, onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void, onDeleteClick?: (id: string) => void) => {
+const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<string>, onResyncClick: (id: string) => void, onViewOrderDetails?: (id: string) => void, onViewDayDetails?: (date: string) => void, rowData?: any[], onFulfillClick?: (id: string) => void, onEditClick?: (id: string) => void, onDesignClick?: (productName: string, recordId?: string, designItemKey?: string, manageType?: boolean) => void, onDeleteClick?: (id: string) => void) => {
     if (cell === 'Click for detail' && onViewDayDetails && rowData) {
         const date = rowData[0] as string;
         return (
@@ -74,7 +74,7 @@ const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<strin
                 return (
                     <button
                         key={i}
-                        onClick={() => onDesignClick && onDesignClick(action.productName || '', action.recordId, action.designItemKey)}
+                        onClick={() => onDesignClick && onDesignClick(action.productName || '', action.recordId, action.designItemKey, true)}
                         className="px-3 py-1 bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 rounded hover:bg-pink-200 dark:hover:bg-pink-900/50 text-xs font-semibold transition-colors"
                     >
                         {action.label}
@@ -156,7 +156,7 @@ const designOverdueLabel = (milliseconds: number) => {
     return days > 0 ? `Trễ ${days} ngày${hours % 24 ? ` ${hours % 24} giờ` : ''}` : `Trễ ${hours} giờ`;
 };
 
-const ItemDesignButton = ({ productName, recordId, designItemKey, designType, designOverdue, designOverdueMs, hasDesign, hasDesignFiles, designFileCount, onDesignClick }: { productName?: string; recordId?: string; designItemKey?: string; designType?: DesignType | null; designOverdue?: boolean; designOverdueMs?: number; hasDesign?: boolean; hasDesignFiles?: boolean; designFileCount?: number; onDesignClick?: (productName: string, recordId?: string, designItemKey?: string) => void }) => {
+const ItemDesignButton = ({ productName, recordId, designItemKey, designType, designOverdue, designOverdueMs, hasDesign, hasDesignFiles, designFileCount, onDesignClick }: { productName?: string; recordId?: string; designItemKey?: string; designType?: DesignType | null; designOverdue?: boolean; designOverdueMs?: number; hasDesign?: boolean; hasDesignFiles?: boolean; designFileCount?: number; onDesignClick?: (productName: string, recordId?: string, designItemKey?: string, manageType?: boolean) => void }) => {
     if (!productName || !onDesignClick) return null;
     const colorClass = hasDesignFiles
         ? 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300'
