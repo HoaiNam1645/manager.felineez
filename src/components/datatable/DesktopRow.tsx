@@ -74,7 +74,7 @@ const renderActionCell = (cell: any, _cellIndex: number, loadingItems: Set<strin
                 return (
                     <button
                         key={i}
-                        onClick={() => onDesignClick && onDesignClick(action.productName || '')}
+                        onClick={() => onDesignClick && onDesignClick(action.productName || '', action.recordId, action.designItemKey)}
                         className="px-3 py-1 bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 rounded hover:bg-pink-200 dark:hover:bg-pink-900/50 text-xs font-semibold transition-colors"
                     >
                         {action.label}

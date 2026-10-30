@@ -264,8 +264,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
         if (recordId && designItemKey) {
             const rec = allRecords.find(r => r.id === recordId);
             const existingType = designTypeForItem(rec?.details, designItemKey);
-            const hasDesign = designProducts.some(product => productMatchesDesignItem(product, designItemKey));
-            if (!existingType && !hasDesign) {
+            if (!existingType) {
                 setPendingDesign({ productName, recordId, designItemKey });
                 return;
             }
@@ -300,6 +299,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
     const ffIdx = processedData.orders.headers.indexOf('FF Code');
     const orderIdIdx = processedData.orders.headers.indexOf('Order ID');
     const productIdx = processedData.orders.headers.indexOf('Product Name');
+    const actionsIdx = processedData.orders.headers.indexOf('Actions');
     const accountIdx = processedData.orders.headers.indexOf('Account');
     const dateTimeIdx = processedData.orders.headers.indexOf('DateTime');
     const sourceIdx = processedData.orders.headers.indexOf('Source');
@@ -425,8 +425,28 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
     const displayRows = useMemo(() => {
         let rows = visibleRows.map(row => {
             const next = [...row];
+            const productCell = productIdx !== -1 ? row[productIdx] as any : null;
+            const unclassifiedItem = Array.isArray(productCell?.items)
+                ? productCell.items.find((item: any) => !item.designType)
+                : null;
+            if (actionsIdx !== -1 && unclassifiedItem) {
+                const actionCell = row[actionsIdx] as any;
+                const actions = Array.isArray(actionCell?.actions)
+                    ? actionCell.actions.filter((action: any) => action.type !== 'design')
+                    : [];
+                next[actionsIdx] = {
+                    ...actionCell,
+                    type: 'action_group',
+                    actions: [...actions, {
+                        type: 'design',
+                        label: 'Phân loại Des',
+                        productName: unclassifiedItem.designProductName || unclassifiedItem.name || '',
+                        recordId: unclassifiedItem.designRecordId || productCell?.id,
+                        designItemKey: unclassifiedItem.designItemKey,
+                    }],
+                };
+            }
             if (orderIdIdx !== -1) {
-                const productCell = productIdx !== -1 ? row[productIdx] as any : null;
                 next[orderIdIdx] = {
                     type: 'order_meta',
                     id: productCell?.id,
@@ -445,7 +465,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
 
         return rows.map((row, index) => [index + 1, ...row]);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [visibleRows, hiddenIndices]);
+    }, [visibleRows, hiddenIndices, actionsIdx]);
 
     useEffect(() => {
         const path = `${location.pathname}${location.search}${location.hash}`;
@@ -763,7 +783,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
                     <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-800" onClick={e => e.stopPropagation()}>
                         <h3 className="text-base font-bold text-gray-900 dark:text-white">Phân loại Design</h3>
                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            Chọn người thực hiện cho Design đầu tiên của sản phẩm này.
+                            Chọn người thực hiện Design cho item này.
                         </p>
                         <div className="mt-4 grid grid-cols-2 gap-3">
                             <button
