@@ -13,6 +13,8 @@ import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, hasDesi
 import { captureProductsReturnState } from '../utils/productReturnState';
 
 type DesignView = 'missing' | 'team' | 'outsource';
+const DESIGN_OVERDUE_MS = 2 * 24 * 60 * 60 * 1000;
+const TERMINAL_STATUSES = new Set(['SHIPPED', 'CANCELLED', 'REFUND']);
 
 type DesignTask = {
   key: string;
@@ -47,6 +49,14 @@ const fmtTime = (iso: string, timeZone: string) => {
   }
 };
 
+const formatOverdueTime = (milliseconds: number): string => {
+  const hours = Math.max(1, Math.floor(milliseconds / (60 * 60 * 1000)));
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  if (days === 0) return `${hours} giờ`;
+  return remainingHours > 0 ? `${days} ngày ${remainingHours} giờ` : `${days} ngày`;
+};
+
 const DesignQueueTab: React.FC<{
   records: OrderRecord[];
   timeZone: string;
@@ -62,6 +72,7 @@ const DesignQueueTab: React.FC<{
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [pendingTask, setPendingTask] = useState<DesignTask | null>(null);
   const [assigning, setAssigning] = useState(false);
+  const [designClock, setDesignClock] = useState(() => Date.now());
 
   const tasks = useMemo<DesignTask[]>(() => records
     .filter((record) => record.kind === 'order' && record.id && record.order_id)
@@ -99,10 +110,19 @@ const DesignQueueTab: React.FC<{
     return () => { cancelled = true; };
   }, []);
 
-  const tasksWithFolders = useMemo(() => tasks.map((task) => ({
-    ...task,
-    match: preferredDesignProduct(products || [], task.designItemKey),
-  })), [tasks, products]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setDesignClock(Date.now()), 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const tasksWithFolders = useMemo(() => tasks.map((task) => {
+    const match = preferredDesignProduct(products || [], task.designItemKey);
+    const createdAt = match?.createdAt ? new Date(match.createdAt).getTime() : NaN;
+    const overdueMs = match && (match.images?.length || 0) === 0 && !TERMINAL_STATUSES.has(task.status) && Number.isFinite(createdAt)
+      ? Math.max(0, designClock - createdAt - DESIGN_OVERDUE_MS)
+      : 0;
+    return { ...task, match, overdueMs };
+  }), [tasks, products, designClock]);
 
   const missingTasks = useMemo(() => tasksWithFolders.filter((task) => task.status === 'NEW' && !task.match), [tasksWithFolders]);
   const teamTasks = useMemo(() => tasksWithFolders.filter((task) => task.designType === 'TEAM'), [tasksWithFolders]);
@@ -220,7 +240,7 @@ const DesignQueueTab: React.FC<{
             {visibleTasks.map((task) => {
               const statusClass = ORDER_STATUS_CLASSES[task.status] || ORDER_STATUS_CLASSES.NEW;
               return (
-                <article key={task.key} className="group overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                <article key={task.key} className={`group overflow-hidden rounded-md border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:bg-gray-800 ${task.overdueMs > 0 ? 'border-red-400 ring-1 ring-red-200 hover:border-red-500 dark:border-red-700 dark:ring-red-900/60' : 'border-slate-200 hover:border-slate-300 dark:border-gray-700'}`}>
                   <div className="flex gap-4 p-4">
                     {task.image ? (
                       <CachedImage src={task.image} alt={task.productName} onClick={() => setPreviewImage(task.image || null)} className="h-24 w-24 shrink-0 cursor-zoom-in rounded-md border border-slate-200 object-cover dark:border-gray-600" />
@@ -230,13 +250,22 @@ const DesignQueueTab: React.FC<{
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <button type="button" onClick={() => onViewOrderDetails(task.recordId)} className="font-mono text-xs font-bold text-blue-600 hover:underline dark:text-blue-400">#{task.orderId}</button>
-                        <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${statusClass}`}>{ORDER_STATUS_LABELS[task.status] || task.status}</span>
+                        <div className="flex flex-wrap justify-end gap-1">
+                          {task.overdueMs > 0 && <span className="rounded-md bg-red-100 px-2 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/60 dark:text-red-300">TRỄ DES</span>}
+                          <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${statusClass}`}>{ORDER_STATUS_LABELS[task.status] || task.status}</span>
+                        </div>
                       </div>
                       <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-5 text-slate-900 dark:text-white" title={task.productName}>{task.productName}</h3>
                       <p className="mt-1 truncate text-xs text-slate-500 dark:text-gray-400">{task.account} · SL {task.quantity}</p>
                     </div>
                   </div>
                   <div className="space-y-1 border-t border-slate-100 px-4 py-3 text-xs dark:border-gray-700">
+                    {task.overdueMs > 0 && (
+                      <div className="mb-2 flex items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-2.5 py-2 font-bold text-red-700 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-300">
+                        <span>⚠ Design đang làm trễ</span>
+                        <span className="shrink-0">{formatOverdueTime(task.overdueMs)}</span>
+                      </div>
+                    )}
                     {task.variant && <p className="line-clamp-2 text-slate-500 dark:text-gray-400">{task.variant}</p>}
                     {task.personalization && <p className="line-clamp-2 font-semibold text-amber-700 dark:text-amber-300">{task.personalization}</p>}
                     <div className="flex items-center justify-between gap-3 pt-1 text-slate-400">
