@@ -23,6 +23,7 @@ type DesignTask = {
   productName: string;
   variant: string;
   personalization: string;
+  orderNote: string;
   quantity: number;
   image?: string;
   account: string;
@@ -90,6 +91,7 @@ const DesignQueueTab: React.FC<{
           productName: decodeHTMLEntities(item.name || record.product_name || 'Untitled product'),
           variant: decodeHTMLEntities(item.variant || ''),
           personalization: item.personalization || '',
+          orderNote: String((record.details as any)?.orderNote || '').trim(),
           quantity: item.quantity || 1,
           image: getHighResImageUrl(item.image),
           account: record.account,
@@ -276,6 +278,12 @@ const DesignQueueTab: React.FC<{
                     )}
                     {task.variant && <p className="line-clamp-2 text-slate-500 dark:text-gray-400">{task.variant}</p>}
                     {task.personalization && <p className="line-clamp-2 font-semibold text-amber-700 dark:text-amber-300">{task.personalization}</p>}
+                    {task.orderNote && (
+                      <div className="rounded-md border border-sky-200 bg-sky-50 px-2.5 py-2 text-sky-800 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200">
+                        <span className="font-bold">Note: </span>
+                        <span className="line-clamp-3 whitespace-pre-line break-words" title={task.orderNote}>{task.orderNote}</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between gap-3 pt-1 text-slate-400">
                       <span>{fmtTime(task.dtLocal, timeZone)}</span>
                       <span className={`rounded-full px-2 py-0.5 font-bold ${task.match ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>{task.match ? 'Đã có folder' : 'Chưa có folder'}</span>
