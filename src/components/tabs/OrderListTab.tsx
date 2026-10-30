@@ -18,7 +18,7 @@ import { Product, fetchAllProducts } from '../../services/productService';
 import { api } from '../../services/apiClient';
 import { fetchListedIdeas } from '../../services/ideasService';
 import { useNotification } from '../../contexts/NotificationContext';
-import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, productMatchesDesignItem } from '../../utils/designItems';
+import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, preferredDesignProduct } from '../../utils/designItems';
 import { captureProductsReturnState, restoreProductsReturnScroll } from '../../utils/productReturnState';
 
 const FACTORIES: { key: string; label: string }[] = [
@@ -266,6 +266,11 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
         if (!navigateAfterSave) return;
         const returnPath = `${location.pathname}${location.search}${location.hash}`;
         captureProductsReturnState(returnPath);
+        const existingFolder = preferredDesignProduct(designProducts, designItemKey);
+        if (existingFolder) {
+            navigate(`/products/c/${existingFolder.categoryId || 'uncategorized'}/f/${existingFolder.id}${params.toString() ? `?${params.toString()}` : ''}`, { state: { from: returnPath } });
+            return;
+        }
         navigate(`/products${params.toString() ? `?${params.toString()}` : ''}`, { state: { from: returnPath } });
     };
 
@@ -330,7 +335,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
             if (!productCell || productCell.type !== 'items' || !Array.isArray(productCell.items)) return row;
             const record = productCell.id ? allRecords.find(r => r.id === productCell.id) : null;
             const nextItems = productCell.items.map((item: any) => {
-                const matchedDesign = designProducts.find(product => productMatchesDesignItem(product, item.designItemKey));
+                const matchedDesign = preferredDesignProduct(designProducts, item.designItemKey);
                 const hasDesign = !!matchedDesign;
                 const hasDesignFiles = (matchedDesign?.images?.length || 0) > 0;
                 const designFileCount = matchedDesign?.images?.length || 0;

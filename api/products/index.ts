@@ -57,6 +57,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!title && (!images || (Array.isArray(images) && images.length === 0))) {
         return badRequest(res, 'A title or at least one image is required');
       }
+      if (typeof source === 'string' && source.startsWith('design-item:')) {
+        const linkedProducts = await prisma.product.findMany({
+          where: { teamId: auth.teamId, source },
+          orderBy: { updatedAt: 'desc' },
+        });
+        const existing = linkedProducts.sort((a, b) => {
+          const aFiles = Array.isArray(a.images) ? a.images.length : 0;
+          const bFiles = Array.isArray(b.images) ? b.images.length : 0;
+          return bFiles - aFiles;
+        })[0];
+        if (existing) return res.status(200).json({ product: existing, existing: true });
+      }
       const product = await prisma.product.create({
         data: {
           teamId: auth.teamId,

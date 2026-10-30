@@ -17,6 +17,18 @@ export const productMatchesDesignItem = (product: { source?: string | null }, de
   return !!designItemKey && product.source === designItemKey;
 };
 
+export const preferredDesignProduct = <T extends { source?: string | null; images?: unknown[] | null; updatedAt?: string; createdAt?: string }>(products: T[], designItemKey?: string | null): T | undefined => {
+  return products
+    .filter((product) => productMatchesDesignItem(product, designItemKey))
+    .sort((a, b) => {
+      const fileDifference = (b.images?.length || 0) - (a.images?.length || 0);
+      if (fileDifference !== 0) return fileDifference;
+      const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      return bTime - aTime;
+    })[0];
+};
+
 export const designRequestsOf = (details?: any): Record<string, string> => {
   const requests = details?.designRequests;
   return requests && typeof requests === 'object' && !Array.isArray(requests) ? requests : {};

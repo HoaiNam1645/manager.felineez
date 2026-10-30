@@ -28,7 +28,7 @@ import TemuExportModal from './TemuExportModal';
 import { getRecentOrderRecords, getRecordById } from '../services/firebaseService';
 import { Record as OrderRecord } from '../types';
 import { useNotification } from '../contexts/NotificationContext';
-import { DESIGN_SOURCE_PREFIX, DESIGN_TYPE_LABELS, designTypeForItem, hasDesignRequestForItem, makeDesignItemKey, productMatchesDesignItem } from '../utils/designItems';
+import { DESIGN_SOURCE_PREFIX, DESIGN_TYPE_LABELS, designTypeForItem, hasDesignRequestForItem, makeDesignItemKey, preferredDesignProduct, productMatchesDesignItem } from '../utils/designItems';
 
 const PAGE_SIZE = 20;
 const UPLOAD_CHUNK = 4; // images per upload request (keeps payload under server limit)
@@ -172,7 +172,7 @@ const CategoriesView: React.FC<{ navigate: (to: string) => void; onClose: () => 
   // Search spans every category, so the whole (small) product set is pulled once.
   useEffect(() => {
     if ((query.trim() || designItemKey) && allProducts === null) {
-      fetchAllProducts().then(setAllProducts).catch(() => setAllProducts([]));
+      fetchAllProducts(1000).then(setAllProducts).catch(() => setAllProducts([]));
     }
   }, [query, designItemKey, allProducts]);
 
@@ -184,10 +184,10 @@ const CategoriesView: React.FC<{ navigate: (to: string) => void; onClose: () => 
   }, [initialQuery]);
 
   const catName = (id: string | null) => (id ? categories.find((c) => c.id === id)?.name || 'Category' : 'Uncategorized');
+  const preferredMatch = designItemKey ? preferredDesignProduct(allProducts || [], designItemKey) : undefined;
   const results = query.trim()
     ? (isDesignFlow
-      ? (allProducts || [])
-        .filter((p) => productMatchesDesignItem(p, designItemKey))
+      ? (preferredMatch ? [preferredMatch] : [])
       : searchProducts(query, allProducts || []))
     : [];
   const legacyResults = query.trim() && isDesignFlow && designItemKey
@@ -223,6 +223,12 @@ const CategoriesView: React.FC<{ navigate: (to: string) => void; onClose: () => 
     const name = query.trim();
     if (!name) return;
     try {
+      const existing = preferredDesignProduct(allProducts || [], designItemKey);
+      if (existing) {
+        addNotification('Folder Design đã tồn tại, đang mở folder hiện có.', 'info');
+        navigate(`/products/c/${existing.categoryId || 'uncategorized'}/f/${existing.id}${designOrderQs}`);
+        return;
+      }
       const categoryId = selectedCategoryId === 'uncategorized' ? null : selectedCategoryId;
       const p = await createProduct({ title: name, description: name, images: [], status: 'DRAFT', categoryId, source: designItemKey || 'local' });
       if (designOrderId) addNotification('Design folder created.', 'success');

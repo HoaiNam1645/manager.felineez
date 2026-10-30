@@ -9,7 +9,7 @@ import { Product, fetchAllProducts } from '../services/productService';
 import { updateOrderFields } from '../services/firebaseService';
 import { useDashboard } from '../contexts/DashboardContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, hasDesignRequestForItem, makeDesignItemKey, productMatchesDesignItem } from '../utils/designItems';
+import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, hasDesignRequestForItem, makeDesignItemKey, preferredDesignProduct } from '../utils/designItems';
 import { captureProductsReturnState } from '../utils/productReturnState';
 
 type DesignView = 'missing' | 'team' | 'outsource';
@@ -101,7 +101,7 @@ const DesignQueueTab: React.FC<{
 
   const tasksWithFolders = useMemo(() => tasks.map((task) => ({
     ...task,
-    match: products?.find((product) => productMatchesDesignItem(product, task.designItemKey)),
+    match: preferredDesignProduct(products || [], task.designItemKey),
   })), [tasks, products]);
 
   const missingTasks = useMemo(() => tasksWithFolders.filter((task) => task.status === 'NEW' && !task.match), [tasksWithFolders]);
