@@ -124,6 +124,11 @@ export async function linkProductDesignItems(productId: string, links: Array<{ r
   return data.links;
 }
 
+export async function unlinkProductDesignItem(productId: string, designItemKey: string): Promise<void> {
+  const qs = new URLSearchParams({ productId, designItemKey });
+  await api.delete(`/api/design-links?${qs.toString()}`);
+}
+
 /** Upload base64 data URIs (or remote URLs) to Cloudinary via the backend. */
 export async function uploadImages(sources: UploadItem[], categorySlug?: string): Promise<ProductImage[]> {
   const { images } = await api.post<{ images: ProductImage[] }>('/api/upload', {

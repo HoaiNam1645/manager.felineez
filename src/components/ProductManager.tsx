@@ -15,6 +15,7 @@ import {
   searchProducts,
   isImageFile,
   linkProductDesignItems,
+  unlinkProductDesignItem,
 } from '../services/productService';
 import { pickFromDrive } from '../services/drivePicker';
 import {
@@ -242,7 +243,7 @@ const CategoriesView: React.FC<{ navigate: (to: string) => void; onClose: () => 
       const match = /^design-item:([^:]+):(\d+)$/.exec(designItemKey);
       if (!match) throw new Error('Invalid design item');
       await linkProductDesignItems(product.id, [{ recordId: match[1], itemIndex: Number(match[2]), designItemKey }]);
-      addNotification('Đã link folder vĩnh viễn với đơn.', 'success');
+      addNotification('Đã link folder với đơn.', 'success');
       navigate(`/products/c/${product.categoryId || 'uncategorized'}/f/${product.id}${designOrderQs}`);
     } catch (e: any) { setError(e?.message || 'Failed'); }
   };
@@ -358,7 +359,7 @@ const CategoriesView: React.FC<{ navigate: (to: string) => void; onClose: () => 
           )}
           {legacyResults.length > 0 && (
             <div className="mt-3 border border-amber-200 dark:border-amber-900/60 rounded-lg bg-amber-50/60 dark:bg-amber-900/10 divide-y divide-amber-100 dark:divide-amber-900/50">
-              <div className="px-4 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300">Folder hiện có · Link là vĩnh viễn, không thể gỡ hoặc chuyển sang folder khác</div>
+              <div className="px-4 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300">Folder hiện có · Có thể unlink sau nếu chọn nhầm</div>
               {legacyResults.map((p) => (
                 <div key={p.id} className="flex items-center gap-3 px-4 py-3">
                   <FolderIcon className="h-5 w-5 text-amber-500 flex-shrink-0" />
@@ -575,6 +576,7 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
   const [selectedLinkKeys, setSelectedLinkKeys] = useState<Set<string>>(new Set());
   const [loadingLinkOrders, setLoadingLinkOrders] = useState(false);
   const [linkingOrders, setLinkingOrders] = useState(false);
+  const [unlinkingLinkId, setUnlinkingLinkId] = useState<string | null>(null);
   const [linkedProductByKey, setLinkedProductByKey] = useState<Map<string, string>>(new Map());
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -759,6 +761,25 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
     }
   };
 
+  const unlinkOrder = async (linkId: string, designItemKey: string, orderId: string) => {
+    if (!confirm(`Unlink đơn #${orderId} khỏi folder này?`)) return;
+    setUnlinkingLinkId(linkId);
+    setError(null);
+    try {
+      await unlinkProductDesignItem(productId, designItemKey);
+      await loadProduct();
+      setLinkedProductByKey((current) => {
+        const next = new Map(current);
+        next.delete(designItemKey);
+        return next;
+      });
+    } catch (e: any) {
+      setError(e?.message || 'Không thể unlink đơn');
+    } finally {
+      setUnlinkingLinkId(null);
+    }
+  };
+
   if (!product) {
     return (
       <>
@@ -791,7 +812,7 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-gray-900 dark:text-white">Đơn đã liên kết ({product.designLinks.length})</h2>
-              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">Liên kết là vĩnh viễn, không thể gỡ hoặc chuyển folder.</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Có thể unlink từng item nếu liên kết nhầm.</p>
             </div>
             <button type="button" onClick={() => void openLinkOrders()} className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-700">
               <PlusIcon /> Link thêm đơn
@@ -801,18 +822,30 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
             <p className="mt-4 text-sm text-gray-400">Folder chưa liên kết với đơn nào.</p>
           ) : (
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {product.designLinks.map((link) => (
-                <button
-                  key={link.id}
-                  type="button"
-                  onClick={() => navigate(`/products/c/${categoryId}/f/${productId}?designOrder=${encodeURIComponent(link.recordId)}&designItem=${encodeURIComponent(link.designItemKey)}`)}
-                  className={`border px-3 py-2 text-left ${designItemKey === link.designItemKey ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30' : 'border-gray-200 bg-gray-50 hover:border-cyan-300 dark:border-gray-700 dark:bg-gray-700/30'}`}
-                >
-                  <p className="text-sm font-bold text-blue-600 dark:text-blue-400">#{link.record?.orderId || link.recordId}</p>
-                  <p className="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-300">{(link.record?.details as any)?.items?.[link.itemIndex]?.name || link.record?.productName || `Item ${link.itemIndex + 1}`}</p>
-                  <p className="mt-0.5 truncate text-[11px] text-gray-400">{link.record?.accountEmail || 'No account'} · {link.record?.orderStatus || 'NEW'}</p>
-                </button>
-              ))}
+              {product.designLinks.map((link) => {
+                const orderId = link.record?.orderId || link.recordId;
+                return (
+                  <div key={link.id} className={`flex items-stretch border ${designItemKey === link.designItemKey ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30' : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-700/30'}`}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/products/c/${categoryId}/f/${productId}?designOrder=${encodeURIComponent(link.recordId)}&designItem=${encodeURIComponent(link.designItemKey)}`)}
+                      className="min-w-0 flex-1 px-3 py-2 text-left hover:bg-cyan-50 dark:hover:bg-cyan-950/20"
+                    >
+                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">#{orderId}</p>
+                      <p className="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-300">{(link.record?.details as any)?.items?.[link.itemIndex]?.name || link.record?.productName || `Item ${link.itemIndex + 1}`}</p>
+                      <p className="mt-0.5 truncate text-[11px] text-gray-400">{link.record?.accountEmail || 'No account'} · {link.record?.orderStatus || 'NEW'}</p>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={unlinkingLinkId === link.id}
+                      onClick={() => void unlinkOrder(link.id, link.designItemKey, orderId)}
+                      className="border-l border-red-200 px-3 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/30"
+                    >
+                      {unlinkingLinkId === link.id ? '...' : 'Unlink'}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
@@ -953,7 +986,7 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white">Link thêm order/item</h3>
-                  <p className="mt-1 text-xs font-semibold text-red-600 dark:text-red-400">Sau khi link sẽ không thể gỡ hoặc chuyển sang folder khác.</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Bạn có thể unlink sau nếu chọn nhầm.</p>
                 </div>
                 <button type="button" onClick={() => setShowLinkOrders(false)} disabled={linkingOrders} className="text-gray-400 hover:text-gray-600 disabled:opacity-50"><CloseIcon /></button>
               </div>
@@ -997,7 +1030,7 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
               <span className="text-sm text-gray-500">Đã chọn {selectedLinkKeys.size} item</span>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setShowLinkOrders(false)} disabled={linkingOrders} className="rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300">Hủy</button>
-                <button type="button" onClick={() => void linkSelectedOrders()} disabled={linkingOrders || selectedLinkKeys.size === 0} className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-700 disabled:opacity-50">{linkingOrders ? 'Đang link...' : `Link vĩnh viễn ${selectedLinkKeys.size} item`}</button>
+                <button type="button" onClick={() => void linkSelectedOrders()} disabled={linkingOrders || selectedLinkKeys.size === 0} className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-700 disabled:opacity-50">{linkingOrders ? 'Đang link...' : `Link ${selectedLinkKeys.size} item`}</button>
               </div>
             </div>
           </div>

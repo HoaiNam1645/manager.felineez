@@ -15,7 +15,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!auth) return;
 
   try {
-    if (req.method !== 'POST') return methodNotAllowed(res, ['POST']);
+    if (req.method === 'DELETE') {
+      const productId = req.body?.productId ?? req.query.productId;
+      const designItemKey = req.body?.designItemKey ?? req.query.designItemKey;
+      if (typeof productId !== 'string' || !productId.trim()) return badRequest(res, 'productId is required');
+      const parsed = parseDesignItemKey(designItemKey);
+      if (!parsed) return badRequest(res, 'Invalid design item key');
+
+      const product = await prisma.product.findFirst({ where: { id: productId, teamId: auth.teamId }, select: { id: true, createdById: true, source: true } });
+      if (!product) return notFound(res);
+      const creatorIds = await visibleCreatorIds(auth);
+      if (creatorIds && (!product.createdById || !creatorIds.includes(product.createdById))) return notFound(res);
+
+      const link = await prisma.productDesignLink.findFirst({
+        where: { productId: product.id, teamId: auth.teamId, designItemKey: parsed.designItemKey },
+      });
+      if (!link) return notFound(res);
+
+      await prisma.$transaction(async (tx) => {
+        await tx.productDesignLink.delete({ where: { id: link.id } });
+        if (product.source === parsed.designItemKey) {
+          const nextLink = await tx.productDesignLink.findFirst({ where: { productId: product.id }, orderBy: { createdAt: 'asc' } });
+          await tx.product.update({ where: { id: product.id }, data: { source: nextLink?.designItemKey || 'local' } });
+        }
+      });
+      return res.status(200).json({ unlinked: true, designItemKey: parsed.designItemKey });
+    }
+
+    if (req.method !== 'POST') return methodNotAllowed(res, ['POST', 'DELETE']);
     const { productId, links } = req.body || {};
     if (typeof productId !== 'string' || !productId.trim()) return badRequest(res, 'productId is required');
     if (!Array.isArray(links) || links.length === 0) return badRequest(res, 'links are required');
@@ -44,7 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const existing = await prisma.productDesignLink.findMany({ where: { designItemKey: { in: uniqueLinks.map((link) => link.designItemKey) } } });
     const conflict = existing.find((link) => link.productId !== product.id);
-    if (conflict) return res.status(409).json({ message: 'Một item đã được link với folder khác và không thể đổi.' });
+    if (conflict) return res.status(409).json({ message: 'Item đang link với folder khác. Hãy unlink trước khi đổi folder.' });
 
     const existingKeys = new Set(existing.map((link) => link.designItemKey));
     const toCreate = uniqueLinks.filter((link) => !existingKeys.has(link.designItemKey));
