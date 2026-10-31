@@ -13,11 +13,11 @@ export const makeDesignItemKey = (recordId?: string | null, itemIndex?: number |
   return `${DESIGN_SOURCE_PREFIX}${recordId}:${index}`;
 };
 
-export const productMatchesDesignItem = (product: { source?: string | null }, designItemKey?: string | null) => {
-  return !!designItemKey && product.source === designItemKey;
+export const productMatchesDesignItem = (product: { source?: string | null; designLinks?: Array<{ designItemKey?: string | null }> | null }, designItemKey?: string | null) => {
+  return !!designItemKey && (product.source === designItemKey || product.designLinks?.some((link) => link.designItemKey === designItemKey) === true);
 };
 
-export const preferredDesignProduct = <T extends { source?: string | null; images?: unknown[] | null; updatedAt?: string; createdAt?: string }>(products: T[], designItemKey?: string | null): T | undefined => {
+export const preferredDesignProduct = <T extends { source?: string | null; designLinks?: Array<{ designItemKey?: string | null }> | null; images?: unknown[] | null; updatedAt?: string; createdAt?: string }>(products: T[], designItemKey?: string | null): T | undefined => {
   return products
     .filter((product) => productMatchesDesignItem(product, designItemKey))
     .sort((a, b) => {

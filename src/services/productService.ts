@@ -13,6 +13,23 @@ export interface ProductImage {
 
 export type UploadItem = string | { data: string; name?: string };
 
+export interface ProductDesignLink {
+  id: string;
+  productId: string;
+  recordId: string;
+  itemIndex: number;
+  designItemKey: string;
+  createdAt: string;
+  record?: {
+    id: string;
+    orderId: string | null;
+    accountEmail: string | null;
+    orderStatus: string | null;
+    productName: string | null;
+    details?: any;
+  } | null;
+}
+
 /** Images render inline; anything else is a downloadable design file. */
 export function isImageFile(im: { url?: string; format?: string; name?: string }): boolean {
   const ext = (im.format || /\.([a-z0-9]{1,8})(?:\?|$)/i.exec(im.name || im.url || '')?.[1] || '').toLowerCase();
@@ -33,6 +50,7 @@ export interface Product {
   createdAt: string;
   updatedAt: string;
   createdByEmail?: string | null;
+  designLinks: ProductDesignLink[];
 }
 
 export interface ProductPage {
@@ -101,6 +119,11 @@ export async function deleteProduct(id: string): Promise<void> {
   await api.delete(`/api/products/${id}`);
 }
 
+export async function linkProductDesignItems(productId: string, links: Array<{ recordId: string; itemIndex: number; designItemKey: string }>): Promise<ProductDesignLink[]> {
+  const data = await api.post<{ links: ProductDesignLink[] }>('/api/design-links', { productId, links });
+  return data.links;
+}
+
 /** Upload base64 data URIs (or remote URLs) to Cloudinary via the backend. */
 export async function uploadImages(sources: UploadItem[], categorySlug?: string): Promise<ProductImage[]> {
   const { images } = await api.post<{ images: ProductImage[] }>('/api/upload', {
@@ -125,6 +148,15 @@ function normalize(p: any): Product {
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
     createdByEmail: p.createdByEmail ?? null,
+    designLinks: Array.isArray(p.designLinks) ? p.designLinks.map((link: any) => ({
+      id: link.id,
+      productId: link.productId ?? p.id,
+      recordId: link.recordId,
+      itemIndex: Number(link.itemIndex || 0),
+      designItemKey: link.designItemKey,
+      createdAt: link.createdAt,
+      record: link.record ?? null,
+    })) : [],
   };
 }
 

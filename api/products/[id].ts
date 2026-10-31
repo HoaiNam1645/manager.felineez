@@ -16,7 +16,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!id) return badRequest(res, 'id is required');
 
   try {
-    const product = await prisma.product.findUnique({ where: { id } });
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        designLinks: {
+          orderBy: { createdAt: 'asc' },
+          include: { record: { select: { id: true, orderId: true, accountEmail: true, orderStatus: true, productName: true, details: true } } },
+        },
+      },
+    });
     if (!product || product.teamId !== auth.teamId) return notFound(res);
     // Non-owners may only touch folders created within their seller team.
     const creatorIds = await visibleCreatorIds(auth);
@@ -39,13 +47,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (images !== undefined) data.images = images;
       if (status !== undefined && STATUS.has(status)) data.status = status;
       if (categoryId !== undefined) data.categoryId = categoryId || null;
-      if (source !== undefined) data.source = source || 'local';
+      if (source !== undefined && source !== product.source) {
+        return badRequest(res, 'Design folder links are permanent. Use the design links API.');
+      }
 
-      const updated = await prisma.product.update({ where: { id }, data });
+      const updated = await prisma.product.update({
+        where: { id },
+        data,
+        include: {
+          designLinks: {
+            orderBy: { createdAt: 'asc' },
+            include: { record: { select: { id: true, orderId: true, accountEmail: true, orderStatus: true, productName: true, details: true } } },
+          },
+        },
+      });
       return res.status(200).json({ product: updated });
     }
 
     if (req.method === 'DELETE') {
+      if (product.designLinks.length > 0) {
+        return res.status(409).json({ message: 'Folder đã liên kết với đơn nên không thể xóa.' });
+      }
       // Best-effort cleanup of stored assets (Spaces for new uploads,
       // Cloudinary for legacy ones).
       const imgs = (product.images as any[]) || [];

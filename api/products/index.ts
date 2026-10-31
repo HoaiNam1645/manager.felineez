@@ -33,7 +33,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const skip = (currentPage - 1) * take;
 
       const [products, total] = await Promise.all([
-        prisma.product.findMany({ where, take, skip, orderBy: { createdAt: 'desc' } }),
+        prisma.product.findMany({
+          where,
+          take,
+          skip,
+          orderBy: { createdAt: 'desc' },
+          include: { designLinks: { select: { id: true, productId: true, recordId: true, itemIndex: true, designItemKey: true, createdAt: true } } },
+        }),
         prisma.product.count({ where }),
       ]);
 
@@ -58,10 +64,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return badRequest(res, 'A title or at least one image is required');
       }
       if (typeof source === 'string' && source.startsWith('design-item:')) {
-        const linkedProducts = await prisma.product.findMany({
-          where: { teamId: auth.teamId, source },
-          orderBy: { updatedAt: 'desc' },
+        const permanentLink = await prisma.productDesignLink.findUnique({
+          where: { designItemKey: source },
+          include: { product: { include: { designLinks: true } } },
         });
+        if (permanentLink?.product.teamId === auth.teamId) {
+          return res.status(200).json({ product: permanentLink.product, existing: true });
+        }
+        const linkedProducts = await prisma.product.findMany({ where: { teamId: auth.teamId, source }, orderBy: { updatedAt: 'desc' }, include: { designLinks: true } });
         const existing = linkedProducts.sort((a, b) => {
           const aFiles = Array.isArray(a.images) ? a.images.length : 0;
           const bFiles = Array.isArray(b.images) ? b.images.length : 0;
@@ -69,20 +79,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })[0];
         if (existing) return res.status(200).json({ product: existing, existing: true });
       }
-      const product = await prisma.product.create({
-        data: {
-          teamId: auth.teamId,
-          createdById: auth.userId,
-          categoryId: categoryId || null,
-          title: title ?? null,
-          listingTitle: listingTitle ?? null,
-          price: price != null && price !== '' ? Number(price) : null,
-          currency: currency || 'USD',
-          description: description ?? null,
-          images: images ?? [],
-          status: STATUS.has(status) ? status : 'DRAFT',
-          source: source || 'local',
-        },
+      const product = await prisma.$transaction(async (tx) => {
+        const created = await tx.product.create({
+          data: {
+            teamId: auth.teamId,
+            createdById: auth.userId,
+            categoryId: categoryId || null,
+            title: title ?? null,
+            listingTitle: listingTitle ?? null,
+            price: price != null && price !== '' ? Number(price) : null,
+            currency: currency || 'USD',
+            description: description ?? null,
+            images: images ?? [],
+            status: STATUS.has(status) ? status : 'DRAFT',
+            source: source || 'local',
+          },
+        });
+        if (typeof source === 'string' && source.startsWith('design-item:')) {
+          const match = /^design-item:([^:]+):(\d+)$/.exec(source);
+          if (!match) throw new Error('Invalid design item key');
+          const record = await tx.record.findFirst({ where: { id: match[1], teamId: auth.teamId, kind: 'ORDER', deletedAt: null }, select: { id: true } });
+          if (!record) throw new Error('Order item not found');
+          await tx.productDesignLink.create({
+            data: { teamId: auth.teamId, productId: created.id, recordId: record.id, itemIndex: Number(match[2]), designItemKey: source, linkedById: auth.userId },
+          });
+        }
+        return tx.product.findUniqueOrThrow({ where: { id: created.id }, include: { designLinks: true } });
       });
       return res.status(201).json({ product });
     }

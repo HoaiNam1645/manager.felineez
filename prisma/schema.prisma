@@ -25,6 +25,7 @@ model Team {
   products      Product[]
   categories    Category[]
   sellerTeams   SellerTeam[]
+  designLinks   ProductDesignLink[]
 }
 
 enum Role {
@@ -157,6 +158,7 @@ model Record {
 
   team    Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   account MailAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  designLinks ProductDesignLink[]
 
   @@unique([teamId, emailId])
   @@index([teamId, dtLocal])
@@ -242,10 +244,32 @@ model Product {
 
   team     Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  designLinks ProductDesignLink[]
 
   @@index([teamId, createdAt])
   @@index([teamId, status])
   @@index([teamId, categoryId])
+}
+
+// Permanent item-to-folder links. A folder may serve many order items, while
+// each order item can only be assigned once and cannot be unlinked.
+model ProductDesignLink {
+  id            String   @id @default(cuid())
+  teamId        String
+  productId     String
+  recordId      String
+  itemIndex     Int
+  designItemKey String   @unique
+  linkedById    String?
+  createdAt     DateTime @default(now())
+
+  team    Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  record  Record  @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([productId])
+  @@index([recordId])
 }
 
 // ============ APP-WIDE SETTINGS ============

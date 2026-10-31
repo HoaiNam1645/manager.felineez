@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Product,
@@ -14,6 +14,7 @@ import {
   fetchAllProducts,
   searchProducts,
   isImageFile,
+  linkProductDesignItems,
 } from '../services/productService';
 import { pickFromDrive } from '../services/drivePicker';
 import {
@@ -238,8 +239,10 @@ const CategoriesView: React.FC<{ navigate: (to: string) => void; onClose: () => 
   const linkDesignFolder = async (product: Product) => {
     if (!designItemKey) return;
     try {
-      await updateProduct(product.id, { source: designItemKey } as any);
-      addNotification('Design folder linked.', 'success');
+      const match = /^design-item:([^:]+):(\d+)$/.exec(designItemKey);
+      if (!match) throw new Error('Invalid design item');
+      await linkProductDesignItems(product.id, [{ recordId: match[1], itemIndex: Number(match[2]), designItemKey }]);
+      addNotification('Đã link folder vĩnh viễn với đơn.', 'success');
       navigate(`/products/c/${product.categoryId || 'uncategorized'}/f/${product.id}${designOrderQs}`);
     } catch (e: any) { setError(e?.message || 'Failed'); }
   };
@@ -355,7 +358,7 @@ const CategoriesView: React.FC<{ navigate: (to: string) => void; onClose: () => 
           )}
           {legacyResults.length > 0 && (
             <div className="mt-3 border border-amber-200 dark:border-amber-900/60 rounded-lg bg-amber-50/60 dark:bg-amber-900/10 divide-y divide-amber-100 dark:divide-amber-900/50">
-              <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">Old folders</div>
+              <div className="px-4 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300">Folder hiện có · Link là vĩnh viễn, không thể gỡ hoặc chuyển sang folder khác</div>
               {legacyResults.map((p) => (
                 <div key={p.id} className="flex items-center gap-3 px-4 py-3">
                   <FolderIcon className="h-5 w-5 text-amber-500 flex-shrink-0" />
@@ -517,9 +520,13 @@ const FoldersView: React.FC<{ categoryId: string; navigate: (to: string) => void
                     <span className="absolute top-1.5 right-2 inline-flex items-center gap-0.5 text-[11px] text-gray-400">
                       <PhotoIcon className="h-3 w-3" /> {p.images.length}
                     </span>
-                    <button onClick={(e) => remove(e, p.id)} className="absolute bottom-1.5 right-1.5 p-1 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500" title="Delete">
-                      <TrashIcon className="h-3.5 w-3.5" />
-                    </button>
+                    {p.designLinks.length === 0 ? (
+                      <button onClick={(e) => remove(e, p.id)} className="absolute bottom-1.5 right-1.5 p-1 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500" title="Delete">
+                        <TrashIcon className="h-3.5 w-3.5" />
+                      </button>
+                    ) : (
+                      <span className="absolute bottom-1.5 right-2 text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">{p.designLinks.length} đơn</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -562,18 +569,32 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [showLinkOrders, setShowLinkOrders] = useState(false);
+  const [linkRecords, setLinkRecords] = useState<OrderRecord[]>([]);
+  const [linkSearch, setLinkSearch] = useState('');
+  const [selectedLinkKeys, setSelectedLinkKeys] = useState<Set<string>>(new Set());
+  const [loadingLinkOrders, setLoadingLinkOrders] = useState(false);
+  const [linkingOrders, setLinkingOrders] = useState(false);
+  const [linkedProductByKey, setLinkedProductByKey] = useState<Map<string, string>>(new Map());
 
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
   const categorySlugRef = useRef<string | undefined>(undefined);
 
-  useEffect(() => {
-    getProduct(productId).then((p) => {
+  const loadProduct = useCallback(async () => {
+    try {
+      const p = await getProduct(productId);
       setProduct(p); setImages(p.images);
       setTitle(p.title || ''); setListingTitle(p.listingTitle || '');
       setPrice(p.price != null ? String(p.price) : '');
       setCurrency(p.currency || 'USD'); setDescription(p.description || ''); setStatus(p.status);
-    }).catch((e) => setError(e?.message || 'Failed to load'));
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load');
+    }
+  }, [productId]);
+
+  useEffect(() => {
+    void loadProduct();
 
     if (categoryId === 'uncategorized') { setCategoryName('Uncategorized'); return; }
     listCategories().then((cats) => {
@@ -581,7 +602,7 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
       setCategoryName(c?.name || 'Category');
       categorySlugRef.current = c?.slug;
     });
-  }, [productId, categoryId]);
+  }, [loadProduct, categoryId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -682,6 +703,62 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
     finally { setSavingInfo(false); }
   };
 
+  const linkedKeys = useMemo(() => new Set(product?.designLinks.map((link) => link.designItemKey) || []), [product?.designLinks]);
+  const linkCandidates = useMemo(() => linkRecords.flatMap((record) => {
+    const items = record.details?.items?.length
+      ? record.details.items
+      : [{ name: record.product_name || 'Untitled product', quantity: 1 } as any];
+    return items.map((item: any, itemIndex: number) => ({
+      key: makeDesignItemKey(record.id, itemIndex),
+      recordId: record.id || '',
+      itemIndex,
+      orderId: record.order_id || 'N/A',
+      account: record.account || '',
+      productName: item.name || record.product_name || 'Untitled product',
+      linked: linkedKeys.has(makeDesignItemKey(record.id, itemIndex)),
+      linkedElsewhere: linkedProductByKey.has(makeDesignItemKey(record.id, itemIndex)) && linkedProductByKey.get(makeDesignItemKey(record.id, itemIndex)) !== productId,
+    }));
+  }).filter((item) => item.recordId), [linkRecords, linkedKeys, linkedProductByKey, productId]);
+  const visibleLinkCandidates = useMemo(() => {
+    const query = linkSearch.trim().toLowerCase();
+    return linkCandidates
+      .filter((item) => !query || item.orderId.toLowerCase().includes(query) || item.account.toLowerCase().includes(query) || item.productName.toLowerCase().includes(query))
+      .slice(0, 100);
+  }, [linkCandidates, linkSearch]);
+
+  const openLinkOrders = async () => {
+    setShowLinkOrders(true);
+    setSelectedLinkKeys(new Set());
+    if (linkRecords.length > 0) return;
+    setLoadingLinkOrders(true);
+    try {
+      const [records, products] = await Promise.all([getRecentOrderRecords(1000), fetchAllProducts(1000)]);
+      setLinkRecords(records);
+      setLinkedProductByKey(new Map(products.flatMap((item) => item.designLinks.map((link) => [link.designItemKey, item.id] as const))));
+    } catch (e: any) {
+      setError(e?.message || 'Không thể tải danh sách đơn');
+    } finally {
+      setLoadingLinkOrders(false);
+    }
+  };
+
+  const linkSelectedOrders = async () => {
+    const selected = linkCandidates.filter((item) => selectedLinkKeys.has(item.key) && !item.linked && !item.linkedElsewhere);
+    if (selected.length === 0) return;
+    setLinkingOrders(true);
+    setError(null);
+    try {
+      await linkProductDesignItems(productId, selected.map((item) => ({ recordId: item.recordId, itemIndex: item.itemIndex, designItemKey: item.key })));
+      await loadProduct();
+      setShowLinkOrders(false);
+      setSelectedLinkKeys(new Set());
+    } catch (e: any) {
+      setError(e?.message || 'Không thể link đơn');
+    } finally {
+      setLinkingOrders(false);
+    }
+  };
+
   if (!product) {
     return (
       <>
@@ -691,7 +768,7 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
     );
   }
 
-  const activeDesignItemKey = designItemKey || (product.source?.startsWith(DESIGN_SOURCE_PREFIX) ? product.source : '');
+  const activeDesignItemKey = designItemKey || product.designLinks[0]?.designItemKey || (product.source?.startsWith(DESIGN_SOURCE_PREFIX) ? product.source : '');
   const activeDesignType = designOrder && activeDesignItemKey
     ? designTypeForItem(designOrder.details, activeDesignItemKey)
     : null;
@@ -709,6 +786,36 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
       />
       <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
         {error && <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg">{error}</div>}
+
+        <section className="bg-white dark:bg-gray-800 rounded-lg border border-cyan-200 dark:border-cyan-900/60 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">Đơn đã liên kết ({product.designLinks.length})</h2>
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">Liên kết là vĩnh viễn, không thể gỡ hoặc chuyển folder.</p>
+            </div>
+            <button type="button" onClick={() => void openLinkOrders()} className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-700">
+              <PlusIcon /> Link thêm đơn
+            </button>
+          </div>
+          {product.designLinks.length === 0 ? (
+            <p className="mt-4 text-sm text-gray-400">Folder chưa liên kết với đơn nào.</p>
+          ) : (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {product.designLinks.map((link) => (
+                <button
+                  key={link.id}
+                  type="button"
+                  onClick={() => navigate(`/products/c/${categoryId}/f/${productId}?designOrder=${encodeURIComponent(link.recordId)}&designItem=${encodeURIComponent(link.designItemKey)}`)}
+                  className={`border px-3 py-2 text-left ${designItemKey === link.designItemKey ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30' : 'border-gray-200 bg-gray-50 hover:border-cyan-300 dark:border-gray-700 dark:bg-gray-700/30'}`}
+                >
+                  <p className="text-sm font-bold text-blue-600 dark:text-blue-400">#{link.record?.orderId || link.recordId}</p>
+                  <p className="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-300">{(link.record?.details as any)?.items?.[link.itemIndex]?.name || link.record?.productName || `Item ${link.itemIndex + 1}`}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-gray-400">{link.record?.accountEmail || 'No account'} · {link.record?.orderStatus || 'NEW'}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
 
         {designOrder && (
           <section className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-900/50 p-5">
@@ -838,6 +945,64 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
           <input ref={folderRef} type="file" webkitdirectory="" directory="" multiple className="hidden" onChange={(e) => { addFiles(Array.from(e.target.files || [])); if (folderRef.current) folderRef.current.value = ''; }} />
         </section>
       </div>
+
+      {showLinkOrders && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4" onClick={() => !linkingOrders && setShowLinkOrders(false)}>
+          <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800" onClick={(event) => event.stopPropagation()}>
+            <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Link thêm order/item</h3>
+                  <p className="mt-1 text-xs font-semibold text-red-600 dark:text-red-400">Sau khi link sẽ không thể gỡ hoặc chuyển sang folder khác.</p>
+                </div>
+                <button type="button" onClick={() => setShowLinkOrders(false)} disabled={linkingOrders} className="text-gray-400 hover:text-gray-600 disabled:opacity-50"><CloseIcon /></button>
+              </div>
+              <input value={linkSearch} onChange={(event) => setLinkSearch(event.target.value)} placeholder="Tìm order, sản phẩm, shop..." className="mt-4 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              {loadingLinkOrders ? (
+                <p className="py-10 text-center text-sm text-gray-400">Đang tải đơn...</p>
+              ) : visibleLinkCandidates.length === 0 ? (
+                <p className="py-10 text-center text-sm text-gray-400">Không tìm thấy item phù hợp.</p>
+              ) : (
+                <div className="space-y-1">
+                  {visibleLinkCandidates.map((item) => {
+                    const unavailable = item.linked || item.linkedElsewhere;
+                    const checked = item.linked || selectedLinkKeys.has(item.key);
+                    return (
+                      <label key={item.key} className={`flex items-start gap-3 border px-3 py-2.5 ${unavailable ? 'cursor-not-allowed border-emerald-200 bg-emerald-50 opacity-70 dark:border-emerald-900/60 dark:bg-emerald-950/20' : 'cursor-pointer border-gray-200 hover:border-cyan-300 dark:border-gray-700'}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={unavailable || linkingOrders}
+                          onChange={(event) => setSelectedLinkKeys((current) => {
+                            const next = new Set(current);
+                            if (event.target.checked) next.add(item.key); else next.delete(item.key);
+                            return next;
+                          })}
+                          className="mt-0.5"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-bold text-blue-600 dark:text-blue-400">#{item.orderId} {item.linked ? '· Đã link folder này' : item.linkedElsewhere ? '· Đã link folder khác' : ''}</span>
+                          <span className="mt-0.5 block truncate text-sm text-gray-800 dark:text-gray-200">{item.productName}</span>
+                          <span className="mt-0.5 block truncate text-xs text-gray-400">{item.account} · Item {item.itemIndex + 1}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-gray-200 px-5 py-4 dark:border-gray-700">
+              <span className="text-sm text-gray-500">Đã chọn {selectedLinkKeys.size} item</span>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowLinkOrders(false)} disabled={linkingOrders} className="rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300">Hủy</button>
+                <button type="button" onClick={() => void linkSelectedOrders()} disabled={linkingOrders || selectedLinkKeys.size === 0} className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-700 disabled:opacity-50">{linkingOrders ? 'Đang link...' : `Link vĩnh viễn ${selectedLinkKeys.size} item`}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ImagePreviewModal imageUrl={previewUrl} productName={title} onClose={() => setPreviewUrl(null)} />
     </>
