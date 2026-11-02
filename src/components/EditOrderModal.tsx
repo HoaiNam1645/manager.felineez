@@ -10,6 +10,7 @@ const MANUAL_FF_CODE_OPTIONS = [
     'mkp',
     'MK',
     'Lemon',
+    'artyland',
     'print arrow',
     'tp',
     'lizzy',
