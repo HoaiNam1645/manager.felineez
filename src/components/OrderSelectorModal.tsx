@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Record } from '../types';
 import { useDashboard } from '../contexts/DashboardContext';
 import { api } from '../services/apiClient';
@@ -31,6 +31,7 @@ const OrderSelectorModal: React.FC<OrderSelectorModalProps> = ({
     const [skuInput, setSkuInput] = useState('');
     const [isMappingSku, setIsMappingSku] = useState(false);
     const [mapMessage, setMapMessage] = useState<string | null>(null);
+    const hasInitializedSelection = useRef(false);
 
     // Helper to get account label
     const getAccountLabel = (email: string) => {
@@ -57,9 +58,15 @@ const OrderSelectorModal: React.FC<OrderSelectorModalProps> = ({
         });
     }, [ordersOnly]);
 
-    // Auto-select all when modal opens
+    // Auto-select once per modal session so data refreshes do not overwrite manual choices.
     useEffect(() => {
-        if (isOpen && itemRows.length > 0) {
+        if (!isOpen) {
+            hasInitializedSelection.current = false;
+            return;
+        }
+
+        if (!hasInitializedSelection.current && itemRows.length > 0) {
+            hasInitializedSelection.current = true;
             setSelectedKeys(new Set(itemRows.map(row => row.key)));
         }
     }, [isOpen, itemRows]);
