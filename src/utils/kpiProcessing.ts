@@ -174,6 +174,7 @@ const ETSY_FALLBACK_FEE_RATE = 0.145;
 const roundMoney = (v: number): number => Math.round(v * 100) / 100;
 const hasNumber = (v: unknown): boolean => v !== null && v !== undefined && Number.isFinite(Number(v));
 const isRefundedOrder = (record: AppRecord): boolean => (record as any).order_status === 'REFUND';
+const isCancelledOrder = (record: AppRecord): boolean => (record as any).order_status === 'CANCELLED';
 
 const orderTotalForFeeEstimate = (record: AppRecord, fees: any): number => {
   if (isRefundedOrder(record)) return 0;
@@ -238,7 +239,7 @@ export function computeKpi({ records, users, teams, timeZone, teamFilter, range 
   let currency = 'USD';
 
   for (const r of records) {
-    if (r.kind !== 'order' || r.source !== 'Etsy_Sales') continue;
+    if (r.kind !== 'order' || r.source !== 'Etsy_Sales' || isCancelledOrder(r)) continue;
     totalOrders++;
 
     const fees: any = (r as any).etsy_fees;
