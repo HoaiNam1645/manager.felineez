@@ -288,7 +288,9 @@ export function computeKpi({ records, users, teams, timeZone, teamFilter, range 
     const orderDesignCost = r.design_cost != null ? num(r.design_cost) : 0;
     const orderRefund = (r as any).refund_amount != null ? num((r as any).refund_amount) : 0;
     const orderNet = orderNetForKpi(r, fees);
-    const orderProfit = orderNet - orderFfCost - orderDesignCost - orderRefund;
+    // REFUND orders already have zero net, so subtracting the refund again double-counts the loss.
+    const refundCost = isRefundedOrder(r) ? 0 : orderRefund;
+    const orderProfit = orderNet - orderFfCost - orderDesignCost - refundCost;
     const totalSkus = skus.length;
     const day = bucketOf(dayOf(r.dt_local, timeZone), granularity);
 
