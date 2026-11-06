@@ -338,17 +338,19 @@ export const listenForNewRecords = (
   callback: (record: Record) => void
 ): (() => void) => {
   let cancelled = false;
-  let lastSeenAt = new Date().toISOString();
+  let lastSeenAt = new Date(Date.now() - 2000).toISOString();
 
   const tick = async () => {
     if (cancelled) return;
+    const pollStartedAt = Date.now();
     try {
-      const qs = new URLSearchParams({ from: lastSeenAt, limit: '100' });
+      const qs = new URLSearchParams({ updatedSince: lastSeenAt, limit: '5000' });
       const { records } = await api.get<{ records: any[] }>(`/api/records?${qs.toString()}`);
-      lastSeenAt = new Date().toISOString();
       records.map(mapRecord).forEach(callback);
+      // Keep a small overlap so updates committed during the request are never skipped.
+      lastSeenAt = new Date(pollStartedAt - 2000).toISOString();
     } catch (e) {
-      console.warn('[listenForNewRecords] poll failed', e);
+      console.warn('[listenForNewRecords] change poll failed', e);
     }
   };
   const interval = setInterval(tick, 15000);

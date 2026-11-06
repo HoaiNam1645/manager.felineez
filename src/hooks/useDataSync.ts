@@ -739,26 +739,28 @@ export const useDataSync = ({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [resyncCostsManual]);
 
-    // --- Effect: Listen for New Records (Realtime) ---
+    // --- Effect: Listen for Record Changes (Realtime) ---
     useEffect(() => {
         if (!user) return;
 
-        // Setup listener
-        const unsubscribe = listenForNewRecords(teamId, (newRecord) => {
-            // Only process if realtime sync is enabled
-            if (!isRealtimeSyncEnabledRef.current) {
-                return;
-            }
-
+        const unsubscribe = listenForNewRecords(teamId, (changedRecord) => {
             const { from, to } = filterDateRange;
-            const recordDate = new Date(newRecord.dt_local);
+            const recordDate = new Date(changedRecord.dt_local);
             const fromDate = new Date(from);
             const toDate = new Date(to); toDate.setHours(23, 59, 59, 999);
+            const isInRange = recordDate >= fromDate && recordDate <= toDate;
 
-            if (recordDate >= fromDate && recordDate <= toDate) {
-                setRecords(prevRecords => [newRecord, ...prevRecords].sort((a, b) => new Date(b.dt_local).getTime() - new Date(a.dt_local).getTime()));
-                addNotification(`New ${newRecord.kind} received.`, "info");
-            }
+            setRecords(prevRecords => {
+                const withoutChanged = changedRecord.id
+                    ? prevRecords.filter(record => record.id !== changedRecord.id)
+                    : prevRecords;
+
+                if (changedRecord.deleted_at || !isInRange) return withoutChanged;
+
+                return [changedRecord, ...withoutChanged].sort(
+                    (a, b) => new Date(b.dt_local).getTime() - new Date(a.dt_local).getTime()
+                );
+            });
         });
 
         // Store unsubscribe function
@@ -767,7 +769,7 @@ export const useDataSync = ({
         return () => {
             unsubscribe();
         };
-    }, [filterDateRange, user, teamId, addNotification]);
+    }, [filterDateRange, user, teamId]);
 
     // --- Effect: Listen for Account Changes (Realtime) ---
     useEffect(() => {

@@ -72,9 +72,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === 'GET') {
-      const { from, to, accountId, kind, q, limit = '5000', cursor } = req.query as Record<string, string>;
+      const { from, to, updatedSince, accountId, kind, q, limit = '5000', cursor } = req.query as Record<string, string>;
 
-      const where: any = { teamId: auth.teamId, deletedAt: null };
+      const updatedSinceDate = parseDate(updatedSince);
+      const where: any = {
+        teamId: auth.teamId,
+        ...(updatedSinceDate ? { updatedAt: { gte: updatedSinceDate } } : { deletedAt: null }),
+      };
 
       // Server-side visibility: non-owners only see records of shops they can
       // access (leader = team's shops, user = own/allowed shops).
@@ -105,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         where,
         take,
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-        orderBy: { dtLocal: 'desc' },
+        orderBy: updatedSinceDate ? { updatedAt: 'asc' } : { dtLocal: 'desc' },
       });
 
       return res.status(200).json({
