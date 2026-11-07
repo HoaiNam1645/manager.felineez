@@ -176,13 +176,23 @@ const hasNumber = (v: unknown): boolean => v !== null && v !== undefined && Numb
 const isRefundedOrder = (record: AppRecord): boolean => (record as any).order_status === 'REFUND';
 const isCancelledOrder = (record: AppRecord): boolean => (record as any).order_status === 'CANCELLED';
 
+const originalOrderTotal = (record: AppRecord, fees: any): number =>
+  num(fees?.orderTotal) || num((record as any).details?.financials?.orderTotal) || num((record as any).amount);
+
+const isFullRefundOrder = (record: AppRecord, fees: any): boolean => {
+  if (!isRefundedOrder(record)) return false;
+  if (!hasNumber((record as any).refund_amount)) return true;
+  const orderTotal = originalOrderTotal(record, fees);
+  return orderTotal <= 0 || num((record as any).refund_amount) >= orderTotal - 0.01;
+};
+
 const orderTotalForFeeEstimate = (record: AppRecord, fees: any): number => {
-  if (isRefundedOrder(record)) return 0;
-  return num(fees?.orderTotal) || num((record as any).details?.financials?.orderTotal) || num((record as any).amount);
+  if (isFullRefundOrder(record, fees)) return 0;
+  return originalOrderTotal(record, fees);
 };
 
 const orderNetForKpi = (record: AppRecord, fees: any): number => {
-  if (isRefundedOrder(record)) return 0;
+  if (isFullRefundOrder(record, fees)) return 0;
   if (hasNumber(fees?.estActualNet)) return roundMoney(num(fees.estActualNet));
 
   const orderTotal = orderTotalForFeeEstimate(record, fees);
@@ -288,8 +298,8 @@ export function computeKpi({ records, users, teams, timeZone, teamFilter, range 
     const orderDesignCost = r.design_cost != null ? num(r.design_cost) : 0;
     const orderRefund = (r as any).refund_amount != null ? num((r as any).refund_amount) : 0;
     const orderNet = orderNetForKpi(r, fees);
-    // REFUND orders already have zero net, so subtracting the refund again double-counts the loss.
-    const refundCost = isRefundedOrder(r) ? 0 : orderRefund;
+    // Full refunds already have zero net; partial refunds reduce the original net.
+    const refundCost = isFullRefundOrder(r, fees) ? 0 : orderRefund;
     const orderProfit = orderNet - orderFfCost - orderDesignCost - refundCost;
     const totalSkus = skus.length;
     const day = bucketOf(dayOf(r.dt_local, timeZone), granularity);

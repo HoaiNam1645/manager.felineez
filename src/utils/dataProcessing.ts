@@ -15,7 +15,6 @@ const numericValue = (value: unknown): number | null => {
 
 const isRefundedOrder = (record: Record): boolean => record.order_status === 'REFUND';
 const isCancelledOrder = (record: Record): boolean => record.order_status === 'CANCELLED';
-const effectiveOrderAmount = (record: Record): number => isRefundedOrder(record) ? 0 : (record.amount || 0);
 
 const getOriginalOrderTotal = (record: Record): number =>
     numericValue((record as any).etsy_fees?.orderTotal)
@@ -23,13 +22,23 @@ const getOriginalOrderTotal = (record: Record): number =>
     ?? numericValue(record.amount)
     ?? 0;
 
+const isFullRefundOrder = (record: Record): boolean => {
+    if (!isRefundedOrder(record)) return false;
+    const refundAmount = numericValue(record.refund_amount);
+    if (refundAmount === null) return true;
+    const orderTotal = getOriginalOrderTotal(record);
+    return orderTotal <= 0 || refundAmount >= orderTotal - 0.01;
+};
+
+const effectiveOrderAmount = (record: Record): number => isFullRefundOrder(record) ? 0 : (record.amount || 0);
+
 const getOrderTotalForFeeEstimate = (record: Record): number => {
-    if (isRefundedOrder(record)) return 0;
+    if (isFullRefundOrder(record)) return 0;
     return getOriginalOrderTotal(record);
 };
 
 const getOrderNetForProfit = (record: Record): number => {
-    if (isRefundedOrder(record)) return 0;
+    if (isFullRefundOrder(record)) return 0;
     const fees = (record as any).etsy_fees;
     const estActualNet = numericValue(fees?.estActualNet);
     if (estActualNet !== null) return roundMoney(estActualNet);
@@ -458,7 +467,7 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
         const refundAmount = o.refund_amount ?? null;
         // A fully refunded order already has zero net; only production costs remain as loss.
         const productionCost = (ffCost ?? 0) + (designCost ?? 0);
-        const refundCost = isRefundedOrder(o) ? 0 : (refundAmount ?? 0);
+        const refundCost = isFullRefundOrder(o) ? 0 : (refundAmount ?? 0);
         const totalCost = productionCost + refundCost;
         const profit = isCancelledOrder(o)
             ? (productionCost === 0 ? 0 : -roundMoney(productionCost))
