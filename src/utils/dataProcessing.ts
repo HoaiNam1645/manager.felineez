@@ -451,10 +451,11 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
         const designCost = o.design_cost ?? null;
         const refundAmount = o.refund_amount ?? null;
         // A fully refunded order already has zero net; only production costs remain as loss.
+        const productionCost = (ffCost ?? 0) + (designCost ?? 0);
         const refundCost = isRefundedOrder(o) ? 0 : (refundAmount ?? 0);
-        const totalCost = (ffCost ?? 0) + (designCost ?? 0) + refundCost;
+        const totalCost = productionCost + refundCost;
         const profit = isCancelledOrder(o)
-            ? 0
+            ? (productionCost === 0 ? 0 : -roundMoney(productionCost))
             : (moneyBase != null && (ffCost != null || designCost != null || refundAmount != null))
                 ? Math.round((moneyBase - totalCost) * 100) / 100
                 : null;
