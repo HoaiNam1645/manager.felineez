@@ -59,9 +59,8 @@ export const RULES: Rule[] = [
     platform: "etsy",
     query: 'subject:"Your funds of"',
     amountOrderRe: new RegExp(
-      // Handles: $123.45 USD, £123.45 GBP, 123.45 CAD
-      // Updated to [^0-9]* to consume any currency symbol or whitespace before the amount
-      `Your\\s+funds\\s+of\\s*[^0-9]*\\s*(${AMOUNT_BIG})\\s*([A-Z]{3})\\s*are\\s+on\\s+the\\s+way`,
+      // Handles symbols before/after the amount, including Vietnamese "12,527,016đ VND".
+      `Your\\s+funds\\s+of\\s*[^0-9]*\\s*(${AMOUNT_BIG})\\s*[^A-Z0-9]*\\s*([A-Z]{3})\\s*are\\s+on\\s+the\\s+way`,
       "i"
     ),
     currencyFromGroup: 2,
