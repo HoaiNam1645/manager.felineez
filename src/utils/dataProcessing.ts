@@ -14,6 +14,7 @@ const numericValue = (value: unknown): number | null => {
 };
 
 const isRefundedOrder = (record: Record): boolean => record.order_status === 'REFUND';
+const isCancelledOrder = (record: Record): boolean => record.order_status === 'CANCELLED';
 const effectiveOrderAmount = (record: Record): number => isRefundedOrder(record) ? 0 : (record.amount || 0);
 
 const getOrderTotalForFeeEstimate = (record: Record): number => {
@@ -452,9 +453,11 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
         // A fully refunded order already has zero net; only production costs remain as loss.
         const refundCost = isRefundedOrder(o) ? 0 : (refundAmount ?? 0);
         const totalCost = (ffCost ?? 0) + (designCost ?? 0) + refundCost;
-        const profit = (moneyBase != null && (ffCost != null || designCost != null || refundAmount != null))
-            ? Math.round((moneyBase - totalCost) * 100) / 100
-            : null;
+        const profit = isCancelledOrder(o)
+            ? 0
+            : (moneyBase != null && (ffCost != null || designCost != null || refundAmount != null))
+                ? Math.round((moneyBase - totalCost) * 100) / 100
+                : null;
 
         return [
             o.order_id || 'N/A',
