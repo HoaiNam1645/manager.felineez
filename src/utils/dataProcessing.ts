@@ -17,12 +17,15 @@ const isRefundedOrder = (record: Record): boolean => record.order_status === 'RE
 const isCancelledOrder = (record: Record): boolean => record.order_status === 'CANCELLED';
 const effectiveOrderAmount = (record: Record): number => isRefundedOrder(record) ? 0 : (record.amount || 0);
 
+const getOriginalOrderTotal = (record: Record): number =>
+    numericValue((record as any).etsy_fees?.orderTotal)
+    ?? numericValue(record.details?.financials?.orderTotal)
+    ?? numericValue(record.amount)
+    ?? 0;
+
 const getOrderTotalForFeeEstimate = (record: Record): number => {
     if (isRefundedOrder(record)) return 0;
-    return numericValue((record as any).etsy_fees?.orderTotal)
-        ?? numericValue(record.details?.financials?.orderTotal)
-        ?? numericValue(record.amount)
-        ?? 0;
+    return getOriginalOrderTotal(record);
 };
 
 const getOrderNetForProfit = (record: Record): number => {
@@ -447,6 +450,9 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
         else if (o.source === 'Ebay_Sales') displaySource = 'eBay';
 
         const moneyBase = getOrderNetForProfit(o);
+        const displayRevenue = (isCancelledOrder(o) || isRefundedOrder(o))
+            ? roundMoney(getOriginalOrderTotal(o))
+            : moneyBase;
         const ffCost = o.cost_total ?? null;
         const designCost = o.design_cost ?? null;
         const refundAmount = o.refund_amount ?? null;
@@ -488,8 +494,8 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
             variants, // New cell for variants
             {
                 type: 'value_with_unit' as const,
-                value: moneyBase,
-                display: moneyBase,
+                value: displayRevenue,
+                display: displayRevenue,
             },
             o.currency || 'USD',
             ffCost,
