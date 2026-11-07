@@ -24,6 +24,30 @@ const money = (value: number): string => {
     return `${value < 0 ? '-' : ''}$${abs}`;
 };
 
+const sumCurrencyDisplays = (displays: Array<string | undefined>): string => {
+    const totals = new Map<string, number>();
+
+    displays.forEach(display => {
+        if (!display || display === '--') return;
+        display.split(' + ').forEach(part => {
+            const match = part.trim().match(/^(-?[\d,]+(?:\.\d+)?)\s+([A-Z]{3})$/);
+            if (!match) return;
+            const value = Number(match[1].replace(/,/g, ''));
+            if (!Number.isFinite(value)) return;
+            totals.set(match[2], (totals.get(match[2]) || 0) + value);
+        });
+    });
+
+    if (totals.size === 0) return '--';
+    return Array.from(totals.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([currency, value]) => `${value.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        })} ${currency}`)
+        .join(' + ');
+};
+
 const thBase = 'px-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap';
 const tdBase = 'px-3 py-3 text-sm whitespace-nowrap';
 
@@ -33,6 +57,18 @@ const SellerRanking: React.FC<SellerRankingProps> = ({ sellers }) => {
     const showCost = sellers.some(s => s.cost !== undefined);
     const showProfit = sellers.some(s => s.profit !== undefined);
     const showRefund = sellers.some(s => (s.refund?.count || 0) > 0 || (s.refund?.amount.value || 0) > 0);
+
+    const totals = {
+        orders: sellers.reduce((sum, seller) => sum + seller.orders, 0),
+        items: sellers.reduce((sum, seller) => sum + seller.items, 0),
+        revenue: sumCurrencyDisplays(sellers.map(seller => seller.revenue.display)),
+        net: sumCurrencyDisplays(sellers.map(seller => seller.net.display)),
+        funds: sumCurrencyDisplays(sellers.map(seller => seller.funds?.display)),
+        cost: sellers.reduce((sum, seller) => sum + (seller.cost || 0), 0),
+        profit: sellers.reduce((sum, seller) => sum + (seller.profit || 0), 0),
+        refundCount: sellers.reduce((sum, seller) => sum + (seller.refund?.count || 0), 0),
+        refund: sumCurrencyDisplays(sellers.map(seller => seller.refund?.amount.display)),
+    };
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -97,6 +133,28 @@ const SellerRanking: React.FC<SellerRankingProps> = ({ sellers }) => {
                                 );
                             })}
                         </tbody>
+                        <tfoot>
+                            <tr className="border-t-2 border-gray-200 dark:border-gray-600 bg-slate-50 dark:bg-gray-700/50">
+                                <td className={`${tdBase} font-bold text-gray-900 dark:text-white`}></td>
+                                <td className={`${tdBase} font-bold text-gray-900 dark:text-white uppercase`}>Total</td>
+                                <td className={`${tdBase} text-right font-bold text-gray-900 dark:text-white tabular-nums`}>{totals.orders.toLocaleString()}</td>
+                                <td className={`${tdBase} text-right font-bold text-gray-900 dark:text-white tabular-nums`}>{totals.items.toLocaleString()}</td>
+                                <td className={`${tdBase} text-right font-bold text-gray-900 dark:text-white tabular-nums`}>{totals.revenue}</td>
+                                <td className={`${tdBase} text-right font-bold text-sky-700 dark:text-sky-300 tabular-nums`}>{totals.net}</td>
+                                {showFunds && <td className={`${tdBase} text-right font-bold text-gray-900 dark:text-white tabular-nums`}>{totals.funds}</td>}
+                                {showCost && <td className={`${tdBase} text-right font-bold text-gray-900 dark:text-white tabular-nums`}>{money(totals.cost)}</td>}
+                                {showProfit && (
+                                    <td className={`${tdBase} text-right font-bold tabular-nums ${totals.profit < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-300'}`}>
+                                        {money(totals.profit)}
+                                    </td>
+                                )}
+                                {showRefund && (
+                                    <td className={`${tdBase} text-right font-bold text-rose-700 dark:text-rose-300 tabular-nums`}>
+                                        {totals.refundCount > 0 ? `${totals.refundCount} · ${totals.refund}` : '--'}
+                                    </td>
+                                )}
+                            </tr>
+                        </tfoot>
                     </table>
                 )}
             </div>
