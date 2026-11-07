@@ -167,6 +167,7 @@ export interface SellerRankRow {
   orders: number;
   items: number; // total item quantity sold
   revenue: { value: number; display: string };
+  net: { value: number; display: string };
   funds?: { value: number; display: string }; // only for owner / viewFunds
   cost?: number;                               // only for owner / viewFulfill (USD)
   profit?: number;                             // net minus cost, permission-gated with cost

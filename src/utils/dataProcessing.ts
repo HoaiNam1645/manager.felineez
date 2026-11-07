@@ -1040,6 +1040,7 @@ const calculateSummary = (
             orders: data.orders.size,
             items: totalItemsByShop[seller] || 0,
             revenue: { value: revenue.value, display: revenue.display },
+            net: { value: net.value, display: net.display },
             funds: canFunds ? { value: funds.value, display: funds.display } : undefined,
             cost: canFulfill ? totalCost : undefined,
             profit: canFulfill ? net.value - totalCost : undefined,

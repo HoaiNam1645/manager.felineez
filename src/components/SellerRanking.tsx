@@ -60,6 +60,7 @@ const SellerRanking: React.FC<SellerRankingProps> = ({ sellers }) => {
                                 <th className={`${thBase} text-right`}>Orders</th>
                                 <th className={`${thBase} text-right`}>Items</th>
                                 <th className={`${thBase} text-right`}>Revenue</th>
+                                <th className={`${thBase} text-right`}>Net</th>
                                 {showFunds && <th className={`${thBase} text-right`}>Funds</th>}
                                 {showCost && <th className={`${thBase} text-right`}>Cost</th>}
                                 {showProfit && <th className={`${thBase} text-right`}>Profit</th>}
@@ -79,6 +80,7 @@ const SellerRanking: React.FC<SellerRankingProps> = ({ sellers }) => {
                                         <td className={`${tdBase} text-right text-gray-700 dark:text-gray-300 tabular-nums`}>{s.orders.toLocaleString()}</td>
                                         <td className={`${tdBase} text-right text-gray-700 dark:text-gray-300 tabular-nums`}>{s.items.toLocaleString()}</td>
                                         <td className={`${tdBase} text-right font-semibold text-gray-900 dark:text-white tabular-nums`}>{s.revenue.display}</td>
+                                        <td className={`${tdBase} text-right font-semibold text-sky-700 dark:text-sky-300 tabular-nums`}>{s.net.display}</td>
                                         {showFunds && <td className={`${tdBase} text-right text-gray-700 dark:text-gray-300 tabular-nums`}>{s.funds?.display ?? '--'}</td>}
                                         {showCost && <td className={`${tdBase} text-right text-gray-700 dark:text-gray-300 tabular-nums`}>{s.cost != null ? `$${s.cost.toFixed(2)}` : '--'}</td>}
                                         {showProfit && (
