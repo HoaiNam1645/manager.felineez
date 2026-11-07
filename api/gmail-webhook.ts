@@ -21,6 +21,7 @@ import { parseMessage, RULES } from '../src/services/rules.js';
 import { getHtmlFromGmailPayload, getPlainTextFromGmailPayload } from './_lib/gmailHelper.js';
 import { triggerSyncSafe } from './_lib/exportSync.js';
 import { triggerTelegramNotificationsSafe } from './_lib/telegramHelper.js';
+import { syncEmailRefundTotal } from './_lib/refundTotals.js';
 
 type NotificationEvent = { type: 'order' | 'funds' | 'message'; text: string };
 
@@ -251,36 +252,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           }
 
-          if (rule.name === 'Etsy_Refund' && recordData.orderId && recordData.refundAmount != null) {
-            const refundAmount = Number(recordData.refundAmount);
-            if (Number.isFinite(refundAmount) && refundAmount > 0) {
-              const latestRefund = await prisma.record.findFirst({
-                where: {
-                  teamId,
-                  OR: [{ accountId: account.id }, { accountEmail: userEmail }],
-                  source: 'Etsy_Refund',
-                  orderId: recordData.orderId,
-                  deletedAt: null,
-                },
-                orderBy: { dtLocal: 'desc' },
-                select: { dtLocal: true },
-              });
-              if (!latestRefund || recordData.dtLocal >= latestRefund.dtLocal) {
-                await prisma.record.updateMany({
-                  where: {
-                    teamId,
-                    OR: [{ accountId: account.id }, { accountEmail: userEmail }],
-                    kind: 'ORDER',
-                    source: 'Etsy_Sales',
-                    orderId: recordData.orderId,
-                    deletedAt: null,
-                  },
-                  data: { orderStatus: 'REFUND', refundAmount },
-                });
-              }
-            }
-          }
-
           newRecords.push(recordData);
 
           if (parsedData.kind === 'order') {
@@ -364,6 +335,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!wasExisting) existingEmailIds.delete(r.emailId);
       }
       console.log(`[gmail-webhook] Persisted ${dedupedRecords.length} records for ${userEmail}`);
+    }
+
+    const refundOrderIds = new Set(
+      savedRecords
+        .filter((record) => record.source === 'Etsy_Refund' && record.orderId)
+        .map((record) => String(record.orderId))
+    );
+    for (const orderId of refundOrderIds) {
+      await syncEmailRefundTotal({ teamId, orderId, accountId: account.id, accountEmail: userEmail });
     }
     const newlyCreatedRecords = savedRecords.filter((r) => r.emailId && !existingEmailIds.has(r.emailId));
 

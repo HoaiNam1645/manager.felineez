@@ -5,6 +5,7 @@ import { badRequest, methodNotAllowed, parseDate, serverError } from '../_lib/he
 import { triggerSyncSafe } from '../_lib/exportSync.js';
 import { triggerTelegramNotificationsSafe } from '../_lib/telegramHelper.js';
 import { visibleAccountEmails } from '../_lib/teamScope.js';
+import { syncEmailRefundTotal } from '../_lib/refundTotals.js';
 
 const KIND_MAP: Record<string, 'ORDER' | 'FUNDS' | 'CASE' | 'HELP' | 'MESSAGE'> = {
   order: 'ORDER',
@@ -271,42 +272,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
 
-        if (r.source === 'Etsy_Refund' && fields.orderId && fields.refundAmount != null) {
-          const refundAmount = Number(fields.refundAmount);
-          if (Number.isFinite(refundAmount) && refundAmount > 0) {
-            const orderWhere: any = {
-              teamId: auth.teamId,
-              kind: 'ORDER',
-              source: 'Etsy_Sales',
-              orderId: fields.orderId,
-              deletedAt: null,
-            };
-            if (fields.accountId) orderWhere.accountId = fields.accountId;
-            else if (fields.accountEmail) orderWhere.accountEmail = fields.accountEmail;
-
-            const refundWhere: any = {
-              teamId: auth.teamId,
-              source: 'Etsy_Refund',
-              orderId: fields.orderId,
-              deletedAt: null,
-            };
-            if (fields.accountId) refundWhere.accountId = fields.accountId;
-            else if (fields.accountEmail) refundWhere.accountEmail = fields.accountEmail;
-
-            const latestRefund = await prisma.record.findFirst({
-              where: refundWhere,
-              orderBy: { dtLocal: 'desc' },
-              select: { dtLocal: true },
-            });
-            if (!latestRefund || fields.dtLocal >= latestRefund.dtLocal) {
-              await prisma.record.updateMany({
-                where: orderWhere,
-                data: { orderStatus: 'REFUND', refundAmount },
-              });
-            }
-          }
-        }
-
         // Email re-parsing does not include fulfillment fields. Preserve the
         // existing values unless the caller explicitly supplied each field.
         const updateFields: any = { ...fields };
@@ -333,6 +298,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             },
           });
           savedRecords.push(saved);
+          if (saved.source === 'Etsy_Refund' && saved.orderId) {
+            await syncEmailRefundTotal({
+              teamId: auth.teamId,
+              orderId: saved.orderId,
+              accountId: saved.accountId,
+              accountEmail: saved.accountEmail,
+            });
+          }
           if (!wasExisting) newlyCreatedRecords.push(saved);
         } catch (e: any) {
           // P2002 = unique constraint race: a concurrent sync request inserted
@@ -344,6 +317,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               data: updateFields,
             });
             savedRecords.push(saved);
+            if (saved.source === 'Etsy_Refund' && saved.orderId) {
+              await syncEmailRefundTotal({
+                teamId: auth.teamId,
+                orderId: saved.orderId,
+                accountId: saved.accountId,
+                accountEmail: saved.accountEmail,
+              });
+            }
           } else {
             throw e;
           }
