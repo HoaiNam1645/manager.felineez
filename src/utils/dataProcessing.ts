@@ -849,13 +849,11 @@ const calculateSummary = (
         const currency = r.currency || 'USD';
         if (r.kind === 'order') {
             if (r.order_id) shopData[r.account].orders.add(r.order_id);
-            if (isRefundedOrder(r)) {
+            const refundAmount = Math.max(0, Number(r.refund_amount) || 0);
+            if (!isCancelledOrder(r) && refundAmount > 0) {
                 const refundKey = r.order_id || r.id || `${r.account}_${r.dt_local}`;
                 shopData[r.account].refundOrders.add(refundKey);
-                const refundAmount = Math.max(0, Number(r.amount) || 0);
-                if (refundAmount > 0) {
-                    shopData[r.account].refund[currency] = (shopData[r.account].refund[currency] || 0) + refundAmount;
-                }
+                shopData[r.account].refund[currency] = (shopData[r.account].refund[currency] || 0) + refundAmount;
             }
             const orderAmount = effectiveOrderAmount(r);
             if (orderAmount > 0) {
