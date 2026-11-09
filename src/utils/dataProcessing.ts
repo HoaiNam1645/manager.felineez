@@ -465,6 +465,9 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
         const ffCost = o.cost_total ?? null;
         const designCost = o.design_cost ?? null;
         const refundAmount = o.refund_amount ?? null;
+        const orderItems = o.details?.items || [];
+        const fallbackSkus = String(o.etsy_fees?.sku || '').split(',').map(sku => sku.trim()).filter(Boolean);
+        const canMatchFallbackSkus = fallbackSkus.length === orderItems.length;
         // A fully refunded order already has zero net; only production costs remain as loss.
         const productionCost = (ffCost ?? 0) + (designCost ?? 0);
         const refundCost = isFullRefundOrder(o) ? 0 : (refundAmount ?? 0);
@@ -483,7 +486,7 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
                 type: 'items',
                 name: productName,
                 id: o.id,
-                items: (o.details?.items || []).map((i, itemIndex) => {
+                items: orderItems.map((i, itemIndex) => {
                     const itemName = decodeHTMLEntities(i.name);
                     const designItemKey = makeDesignItemKey(o.id, itemIndex);
                     return {
@@ -491,7 +494,7 @@ const getOrderList = (records: Record[], accountLabelMap: Map<string, string>, t
                         variant: decodeHTMLEntities(i.variant || ''),
                         personalization: i.personalization || '',
                         quantity: i.quantity || 1,
-                        sku: i.sku || '',
+                        sku: i.sku || (canMatchFallbackSkus ? fallbackSkus[itemIndex] : ''),
                         image: i.image || null,
                         fullImage: getHighResImageUrl(i.image || null),
                         designProductName: itemName,
