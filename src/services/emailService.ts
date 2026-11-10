@@ -539,6 +539,9 @@ export const fetchAllRecords = async (
     onProgress?: (progress: { current: number, total: number, message: string }) => void
 ): Promise<Record[]> => {
     setStatus(`Starting sync for ${accounts.length} account(s)...`);
+    // Gmail can index a message after the previous sync query has completed.
+    // Re-scan a short window; email IDs are deduplicated before records are saved.
+    const incrementalOverlapMs = 24 * 60 * 60 * 1000;
 
     // Calculate total steps (Rules * Accounts)
     let totalSteps = 0;
@@ -562,7 +565,10 @@ export const fetchAllRecords = async (
         if (overrideDateRange) {
             syncFromDate = overrideDateRange.from;
         } else if (account.last_synced_at) {
-            syncFromDate = account.last_synced_at;
+            const lastSyncedAt = new Date(account.last_synced_at).getTime();
+            syncFromDate = Number.isFinite(lastSyncedAt)
+                ? new Date(Math.max(0, lastSyncedAt - incrementalOverlapMs)).toISOString()
+                : account.last_synced_at;
             setStatus(`[${account.email}] Syncing new data...`);
         } else {
             const sevenDaysAgo = new Date();
