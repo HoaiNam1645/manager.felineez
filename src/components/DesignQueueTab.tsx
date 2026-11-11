@@ -32,6 +32,7 @@ type DesignTask = {
   designItemKey: string;
   designType: DesignType | null;
   requested: boolean;
+  requestedAt?: string;
   match?: Product;
 };
 
@@ -100,6 +101,7 @@ const DesignQueueTab: React.FC<{
           designItemKey,
           designType: designTypeForItem(record.details, designItemKey),
           requested: hasDesignRequestForItem(record.details, designItemKey),
+          requestedAt: designRequestsOf(record.details)[designItemKey],
         };
       });
     }), [records]);
@@ -119,14 +121,16 @@ const DesignQueueTab: React.FC<{
 
   const tasksWithFolders = useMemo(() => tasks.map((task) => {
     const match = preferredDesignProduct(products || [], task.designItemKey);
-    const createdAt = match?.createdAt ? new Date(match.createdAt).getTime() : NaN;
-    const overdueMs = match && (match.images?.length || 0) === 0 && !TERMINAL_STATUSES.has(task.status) && Number.isFinite(createdAt)
-      ? Math.max(0, designClock - createdAt - DESIGN_OVERDUE_MS)
+    const hasDesignFiles = (match?.images?.length || 0) > 0;
+    const overdueAnchor = match?.createdAt || task.requestedAt || task.dtLocal;
+    const anchorTime = new Date(overdueAnchor).getTime();
+    const overdueMs = !hasDesignFiles && !TERMINAL_STATUSES.has(task.status) && Number.isFinite(anchorTime)
+      ? Math.max(0, designClock - anchorTime - DESIGN_OVERDUE_MS)
       : 0;
-    return { ...task, match, overdueMs };
+    return { ...task, match, overdueMs, hasDesignFiles };
   }), [tasks, products, designClock]);
 
-  const missingTasks = useMemo(() => tasksWithFolders.filter((task) => task.status === 'NEW' && (!task.match || (task.match.images?.length || 0) === 0)), [tasksWithFolders]);
+  const missingTasks = useMemo(() => tasksWithFolders.filter((task) => !TERMINAL_STATUSES.has(task.status) && !task.hasDesignFiles), [tasksWithFolders]);
   const overdueTasks = useMemo(() => tasksWithFolders.filter((task) => task.overdueMs > 0), [tasksWithFolders]);
   const teamTasks = useMemo(() => tasksWithFolders.filter((task) => task.designType === 'TEAM'), [tasksWithFolders]);
   const outsourceTasks = useMemo(() => tasksWithFolders.filter((task) => task.designType === 'OUTSOURCE'), [tasksWithFolders]);
@@ -188,8 +192,8 @@ const DesignQueueTab: React.FC<{
   };
 
   const views: { key: DesignView; label: string; description: string; count: number; tone: string; activeTone: string }[] = [
-    { key: 'missing', label: 'New chưa có Design', description: 'Đơn New chưa có file Design', count: missingTasks.length, tone: 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200', activeTone: 'ring-2 ring-rose-500' },
-    { key: 'overdue', label: 'Trễ Design', description: 'Folder quá 2 ngày chưa có file', count: overdueTasks.length, tone: 'border-red-300 bg-red-50 text-red-800 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-200', activeTone: 'ring-2 ring-red-500' },
+    { key: 'missing', label: 'Chưa có Design', description: 'Đơn đang xử lý chưa có file Design', count: missingTasks.length, tone: 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200', activeTone: 'ring-2 ring-rose-500' },
+    { key: 'overdue', label: 'Trễ Design', description: 'Quá 2 ngày chưa có file Design', count: overdueTasks.length, tone: 'border-red-300 bg-red-50 text-red-800 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-200', activeTone: 'ring-2 ring-red-500' },
     { key: 'team', label: 'Team làm', description: 'Design do team phụ trách', count: teamTasks.length, tone: 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200', activeTone: 'ring-2 ring-blue-500' },
     { key: 'outsource', label: 'Làm ngoài', description: 'Design giao bên ngoài', count: outsourceTasks.length, tone: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200', activeTone: 'ring-2 ring-amber-500' },
   ];
@@ -203,7 +207,7 @@ const DesignQueueTab: React.FC<{
             <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h1 className="text-2xl font-black tracking-tight md:text-3xl">Quản lý Design</h1>
-                <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">Theo dõi đơn New chưa có Design và phân loại khối lượng Team làm / Làm ngoài trên cùng một màn hình.</p>
+                <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">Theo dõi mọi đơn đang xử lý chưa có Design và phân loại khối lượng Team làm / Làm ngoài trên cùng một màn hình.</p>
               </div>
               <div className="relative w-full lg:w-80">
                 <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
