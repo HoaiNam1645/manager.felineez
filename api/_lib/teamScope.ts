@@ -9,10 +9,10 @@ import type { AuthTokenPayload } from './auth.js';
 
 /**
  * Returns the user ids whose content the caller may see,
- * or null when the caller is OWNER/DESIGN (no filtering).
+ * or null when the caller works across the whole workspace (no filtering).
  */
 export async function visibleCreatorIds(auth: AuthTokenPayload): Promise<string[] | null> {
-  if (auth.role === 'OWNER' || auth.role === 'DESIGN') return null;
+  if (auth.role === 'OWNER' || auth.role === 'FULFILLMENT' || auth.role === 'DESIGN') return null;
   const me = await prisma.user.findUnique({
     where: { id: auth.userId },
     select: { sellerTeamId: true },
