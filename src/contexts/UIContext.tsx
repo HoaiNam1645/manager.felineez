@@ -98,10 +98,19 @@ export const UIProvider: React.FC<{ children: React.ReactNode; userUid?: string;
     const location = useLocation();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
+    const routeState = location.state as { from?: string } | null;
+    const overlayReturnPath = location.pathname.startsWith('/products') ? routeState?.from : undefined;
+    const effectiveSearchParams = useMemo(() => {
+        if (!overlayReturnPath) return searchParams;
+        const queryStart = overlayReturnPath.indexOf('?');
+        if (queryStart < 0) return new URLSearchParams();
+        const hashStart = overlayReturnPath.indexOf('#', queryStart);
+        return new URLSearchParams(overlayReturnPath.slice(queryStart + 1, hashStart < 0 ? undefined : hashStart));
+    }, [overlayReturnPath, searchParams]);
     // Always-fresh ref so setters can resolve functional updaters without
     // capturing a stale `searchParams` (keeps setter identities stable).
-    const searchParamsRef = useRef(searchParams);
-    searchParamsRef.current = searchParams;
+    const searchParamsRef = useRef(effectiveSearchParams);
+    searchParamsRef.current = effectiveSearchParams;
 
     const updateParams = useCallback(
         (mutate: (p: URLSearchParams) => void, opts?: { replace?: boolean }) => {
@@ -116,7 +125,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode; userUid?: string;
 
     // --- 1. Local Storage State (preferences, not navigation state) ---
     const [storedTimeZone, setStoredTimeZone] = useLocalStorage<string>('timeZone', 'Asia/Ho_Chi_Minh');
-    const timeZone = searchParams.get('tz') || storedTimeZone;
+    const timeZone = effectiveSearchParams.get('tz') || storedTimeZone;
     const setTimeZone = useCallback((tz: string) => {
         setStoredTimeZone(tz);
         updateParams(p => { p.set('tz', tz); });
@@ -160,7 +169,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode; userUid?: string;
     }, [tabOrder, hiddenTabs, setTabPreferences]);
 
     // --- 2. Active tab — derived from the URL path ---
-    const activeTab = pathToTab(location.pathname);
+    const activeTab = pathToTab(overlayReturnPath?.split(/[?#]/, 1)[0] || location.pathname);
 
     // --- 3. Date Range — backed by ?from=&to=, defaulting to "today" in tz ---
     const getTodayInTimezone = useCallback((tz: string = timeZone): string => {
@@ -170,8 +179,8 @@ export const UIProvider: React.FC<{ children: React.ReactNode; userUid?: string;
         } catch (e) { return new Date().toISOString().split('T')[0]; }
     }, [timeZone]);
 
-    const fromParam = searchParams.get('from');
-    const toParam = searchParams.get('to');
+    const fromParam = effectiveSearchParams.get('from');
+    const toParam = effectiveSearchParams.get('to');
     const today = getTodayInTimezone();
     // Memoized so the object identity is stable across renders (data-fetch effects
     // downstream may depend on it). New object only when from/to/today change.
@@ -193,7 +202,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode; userUid?: string;
     );
 
     // --- 4. Other filters — backed by query params (omit when default) ---
-    const selectedAccountId = searchParams.get('account') ?? 'all';
+    const selectedAccountId = effectiveSearchParams.get('account') ?? 'all';
     const setSelectedAccountId = useCallback<React.Dispatch<React.SetStateAction<string>>>(
         (value) => {
             const next = typeof value === 'function'
@@ -204,7 +213,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode; userUid?: string;
         [updateParams]
     );
 
-    const rawPlatform = searchParams.get('platform');
+    const rawPlatform = effectiveSearchParams.get('platform');
     const sourceFilter: 'All' | 'Ebay_Sales' | 'Etsy_Sales' =
         rawPlatform === 'Ebay_Sales' || rawPlatform === 'Etsy_Sales' ? rawPlatform : 'All';
     const setSourceFilter = useCallback<React.Dispatch<React.SetStateAction<'All' | 'Ebay_Sales' | 'Etsy_Sales'>>>(
@@ -217,7 +226,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode; userUid?: string;
         [updateParams]
     );
 
-    const rawSupport = searchParams.get('support');
+    const rawSupport = effectiveSearchParams.get('support');
     const supportFilter: 'All' | 'Case' | 'Help' | 'Message' =
         rawSupport === 'Case' || rawSupport === 'Help' || rawSupport === 'Message' ? rawSupport : 'All';
     const setSupportFilter = useCallback<React.Dispatch<React.SetStateAction<'All' | 'Case' | 'Help' | 'Message'>>>(
@@ -230,7 +239,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode; userUid?: string;
         [updateParams]
     );
 
-    const dayFilter = searchParams.get('day');
+    const dayFilter = effectiveSearchParams.get('day');
     const setDayFilter = useCallback<React.Dispatch<React.SetStateAction<string | null>>>(
         (value) => {
             const next = typeof value === 'function'
@@ -243,7 +252,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode; userUid?: string;
 
     // searchTerm: keep a local mirror for instant typing; debounce the ?q= write
     // (replace, so keystrokes don't fill the history stack).
-    const [searchInput, setSearchInput] = useState<string>(() => searchParams.get('q') ?? '');
+    const [searchInput, setSearchInput] = useState<string>(() => effectiveSearchParams.get('q') ?? '');
     const searchInputRef = useRef(searchInput);
     searchInputRef.current = searchInput;
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -261,9 +270,9 @@ export const UIProvider: React.FC<{ children: React.ReactNode; userUid?: string;
     );
     // Keep the mirror in sync when ?q= changes externally (back/forward, deep link).
     useEffect(() => {
-        const urlQ = searchParams.get('q') ?? '';
+        const urlQ = effectiveSearchParams.get('q') ?? '';
         if (urlQ !== searchInputRef.current) setSearchInput(urlQ);
-    }, [searchParams]);
+    }, [effectiveSearchParams]);
 
     // --- 5. Modals (transient UI state) ---
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

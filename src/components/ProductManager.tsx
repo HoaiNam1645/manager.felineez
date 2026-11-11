@@ -115,7 +115,8 @@ const ProductManager: React.FC = () => {
   }, [isOpen, location.pathname, location.search, location.hash]);
 
   const navigateWithinProducts = useCallback((to: string) => {
-    navigate(to, { state: routeState || undefined });
+    const isReturnFlow = !!routeState?.from && !routeState.from.startsWith('/products');
+    navigate(to, { replace: isReturnFlow, state: routeState || undefined });
   }, [navigate, routeState]);
 
   const closeProducts = useCallback(() => {
