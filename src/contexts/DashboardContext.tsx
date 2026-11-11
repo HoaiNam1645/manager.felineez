@@ -87,6 +87,22 @@ interface DashboardProviderProps {
   searchTerm: string;
 }
 
+const dateKeyInTimeZone = (value: string, timeZone: string): string | null => {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value;
+  const year = part('year');
+  const month = part('month');
+  const day = part('day');
+  return year && month && day ? `${year}-${month}-${day}` : null;
+};
+
 export const DashboardProvider: React.FC<DashboardProviderProps> = ({
   children, user, teamId, role, permissions, allowedAccounts, onLogout,
   timeZone, filterDateRange, selectedAccountId, searchTerm
@@ -119,6 +135,12 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
     timeZone,
     addNotification
   });
+
+  const realtimeRecordsRef = useRef(records);
+  const notifiedRealtimeIdsRef = useRef(new Set<string>());
+  useEffect(() => {
+    realtimeRecordsRef.current = records;
+  }, [records]);
 
   // --- Auto-Sync to Google Sheets ---
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
@@ -165,36 +187,54 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
     if (!teamId) return;
 
     console.log('[Real-time] Setting up listener for new records...');
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
 
     import('../services/firebaseService').then(({ listenForNewRecords }) => {
-      const unsubscribe = listenForNewRecords(teamId, (newRecord) => {
-        // Quietly add new record to state (React will re-render efficiently, no flash)
+      if (cancelled) return;
+      unsubscribe = listenForNewRecords(teamId, (changedRecord, change) => {
+        if (!changedRecord.id) return;
+
+        if (changedRecord.deleted_at) {
+          setRecords(prev => prev.filter(record => record.id !== changedRecord.id));
+          return;
+        }
+
+        const existing = realtimeRecordsRef.current.some(record => record.id === changedRecord.id);
+        if (existing) {
+          setRecords(prev => prev.map(record => record.id === changedRecord.id ? changedRecord : record));
+          return;
+        }
+
+        const recordDate = dateKeyInTimeZone(changedRecord.dt_local, timeZone);
+        const isInCurrentRange = !!recordDate
+          && recordDate >= filterDateRange.from
+          && recordDate <= filterDateRange.to;
+        if (!isInCurrentRange) return;
+
         setRecords(prev => {
-          // Check if record already exists (avoid duplicates)
-          const exists = prev.some(r => r.id === newRecord.id);
-          if (exists) return prev;
-
-          console.log(`[Real-time] ✨ New ${newRecord.kind} arrived: ${newRecord.order_id || newRecord.id}`);
-
-          // Show toast notification only for orders
-          if (newRecord.kind === 'order') {
-            const productName = newRecord.details?.items?.[0]?.name || 'Unknown product';
-            addNotification(
-              `New order #${newRecord.order_id}: ${productName}`,
-              'success'
-            );
-          }
-
-          return [...prev, newRecord];
+          const index = prev.findIndex(record => record.id === changedRecord.id);
+          if (index < 0) return [...prev, changedRecord];
+          const next = [...prev];
+          next[index] = changedRecord;
+          return next;
         });
+
+        if (change.isNew && changedRecord.kind === 'order' && !notifiedRealtimeIdsRef.current.has(changedRecord.id)) {
+          notifiedRealtimeIdsRef.current.add(changedRecord.id);
+          const productName = changedRecord.details?.items?.[0]?.name || 'Unknown product';
+          addNotification(`New order #${changedRecord.order_id}: ${productName}`, 'success');
+        }
       });
 
-      return () => {
-        console.log('[Real-time] Cleaning up listener...');
-        unsubscribe();
-      };
     });
-  }, [teamId, addNotification]);
+
+    return () => {
+      cancelled = true;
+      console.log('[Real-time] Cleaning up listener...');
+      unsubscribe?.();
+    };
+  }, [teamId, addNotification, filterDateRange.from, filterDateRange.to, timeZone]);
 
   // --- 4. Logic Functions ---
 

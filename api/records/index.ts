@@ -353,7 +353,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       triggerSyncSafe(savedRecords);
       triggerTelegramNotificationsSafe(newlyCreatedRecords.filter(isRecentForTelegram));
 
-      return res.status(200).json({ upserted, records: savedRecords });
+      return res.status(200).json({
+        upserted,
+        created: newlyCreatedRecords.length,
+        updated: savedRecords.length - newlyCreatedRecords.length,
+        records: savedRecords,
+        createdRecords: newlyCreatedRecords,
+      });
     }
 
     return methodNotAllowed(res, ['GET', 'PATCH', 'POST']);
