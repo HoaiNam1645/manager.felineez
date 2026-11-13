@@ -290,7 +290,14 @@ const DesignQueueTab: React.FC<{
                     )}
                     <div className="flex items-center justify-between gap-3 pt-1 text-slate-400">
                       <span>{fmtTime(task.dtLocal, timeZone)}</span>
-                      <span className={`rounded-full px-2 py-0.5 font-bold ${task.match ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>{task.match ? 'Đã có folder' : 'Chưa có folder'}</span>
+                      <span className={`rounded-full px-2 py-0.5 font-bold ${task.hasDesignFiles
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                        : task.match
+                          ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
+                          : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+                      }`}>
+                        {task.hasDesignFiles ? 'Đã hoàn thành' : task.match ? 'Đã có folder' : 'Chưa có folder'}
+                      </span>
                     </div>
                   </div>
                   <div className="flex gap-2 border-t border-slate-100 p-3 dark:border-gray-700">
