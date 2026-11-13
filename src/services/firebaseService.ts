@@ -333,9 +333,10 @@ export const saveRecordsToFirebase = async (
     upserted: number;
     created: number;
     updated: number;
+    skipped: number;
     records: any[];
     createdRecords: any[];
-  }>('/api/records', { records });
+  }>('/api/records', { records, createOnly: true });
   return (result.createdRecords || []).map(mapRecord);
 };
 

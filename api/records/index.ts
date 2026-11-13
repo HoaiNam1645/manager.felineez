@@ -21,6 +21,28 @@ function toEnum(kind: unknown): 'ORDER' | 'FUNDS' | 'CASE' | 'HELP' | 'MESSAGE' 
   return KIND_MAP[kind] ?? null;
 }
 
+const USER_MANAGED_DETAIL_KEYS = ['designRequestedAt', 'designRequests', 'designTypes', 'orderNote'] as const;
+
+function mergeRecordDetails(existing: any, incoming: any) {
+  if (!existing || typeof existing !== 'object' || Array.isArray(existing)) return incoming;
+  if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) return existing;
+
+  const merged: any = { ...existing, ...incoming };
+  for (const key of USER_MANAGED_DETAIL_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(existing, key)) merged[key] = existing[key];
+  }
+
+  if (Array.isArray(incoming.items) && Array.isArray(existing.items)) {
+    merged.items = incoming.items.map((item: any, index: number) => {
+      const previous = existing.items[index];
+      if (!previous || typeof previous !== 'object' || previous.sku === undefined) return item;
+      return { ...item, sku: previous.sku };
+    });
+  }
+
+  return merged;
+}
+
 function isRecentForTelegram(record: any): boolean {
   const maxHours = Math.max(Number(process.env.TELEGRAM_NOTIFY_MAX_RECORD_AGE_HOURS || 6), 0);
   if (!maxHours) return true;
@@ -187,7 +209,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'POST') {
       // Bulk upsert from sync workers
-      const { records } = req.body || {};
+      const { records, createOnly = false } = req.body || {};
       if (!Array.isArray(records) || records.length === 0) {
         return badRequest(res, 'records array is required');
       }
@@ -204,23 +226,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       let upserted = 0;
+      let skipped = 0;
       const savedRecords: any[] = [];
       const existingEmailIds = new Set<string>();
+      const existingByEmailId = new Map<string, any>();
       const incomingEmailIds = dedupedRecords
         .map((r: any) => r.email_id ?? r.emailId ?? null)
         .filter((emailId: unknown): emailId is string => typeof emailId === 'string' && !!emailId);
       if (incomingEmailIds.length > 0) {
         const existingRecords = await prisma.record.findMany({
           where: { teamId: auth.teamId, emailId: { in: incomingEmailIds } },
-          select: { emailId: true },
+          select: { emailId: true, details: true },
         });
-        existingRecords.forEach((r) => { if (r.emailId) existingEmailIds.add(r.emailId); });
+        existingRecords.forEach((r) => {
+          if (!r.emailId) return;
+          existingEmailIds.add(r.emailId);
+          existingByEmailId.set(r.emailId, r);
+        });
       }
       const newlyCreatedRecords: any[] = [];
       for (const r of dedupedRecords) {
         const kindEnum = toEnum(r.kind) ?? 'ORDER';
         const emailId = r.email_id ?? r.emailId ?? null;
         const wasExisting = emailId ? existingEmailIds.has(emailId) : true;
+        if (createOnly && wasExisting) {
+          skipped++;
+          continue;
+        }
         const fields = {
           dtLocal: parseDate(r.dt_local || r.dtLocal) ?? new Date(),
           amount: r.amount ?? 0,
@@ -281,6 +313,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!hasOwn('refund_amount') && !hasOwn('refundAmount')) delete updateFields.refundAmount;
         if (!hasOwn('ff_code') && !hasOwn('ffCode')) delete updateFields.ffCode;
         if (!hasOwn('product_name') && !hasOwn('productName')) delete updateFields.productName;
+        if (wasExisting && emailId && updateFields.details !== undefined) {
+          updateFields.details = mergeRecordDetails(existingByEmailId.get(emailId)?.details, updateFields.details);
+        }
 
         try {
           const saved = await prisma.record.upsert({
@@ -312,6 +347,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // this (teamId, emailId) between our SELECT and INSERT. Fall back to
           // an update so the batch still succeeds.
           if (e?.code === 'P2002' && emailId) {
+            if (createOnly) {
+              skipped++;
+              continue;
+            }
             const saved = await prisma.record.update({
               where: { teamId_emailId: { teamId: auth.teamId, emailId } },
               data: updateFields,
@@ -357,6 +396,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         upserted,
         created: newlyCreatedRecords.length,
         updated: savedRecords.length - newlyCreatedRecords.length,
+        skipped,
         records: savedRecords,
         createdRecords: newlyCreatedRecords,
       });

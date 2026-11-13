@@ -23,7 +23,7 @@ import { triggerSyncSafe } from './_lib/exportSync.js';
 import { triggerTelegramNotificationsSafe } from './_lib/telegramHelper.js';
 import { syncEmailRefundTotal } from './_lib/refundTotals.js';
 
-type NotificationEvent = { type: 'order' | 'funds' | 'message'; text: string };
+type NotificationEvent = { emailId: string; type: 'order' | 'funds' | 'message'; text: string };
 
 function getCancellationTransactionId(record: any): string | null {
   const fromDetails = record?.details?.cancellation?.transactionId;
@@ -220,52 +220,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             details: (parsedData as any).details ?? null,
           };
 
-          const cancellationTransactionId = getCancellationTransactionId(recordData);
-          if (rule.name === 'Etsy_Cancelled' && cancellationTransactionId) {
-            const matchedOrderId = await findOrderIdByTransactionId(
-              teamId,
-              cancellationTransactionId,
-              account.id,
-              userEmail
-            );
-
-            if (matchedOrderId) {
-              recordData.orderId = matchedOrderId;
-              recordData.details = {
-                ...(recordData.details || {}),
-                cancellation: {
-                  ...(recordData.details?.cancellation || {}),
-                  transactionId: cancellationTransactionId,
-                  matchedOrderId,
-                },
-              };
-              await prisma.record.updateMany({
-                where: {
-                  teamId: teamId,
-                  kind: 'ORDER',
-                  source: 'Etsy_Sales',
-                  orderId: matchedOrderId,
-                  deletedAt: null,
-                },
-                data: { orderStatus: 'CANCELLED' },
-              });
-            }
-          }
-
           newRecords.push(recordData);
 
           if (parsedData.kind === 'order') {
             notificationEvents.push({
+              emailId: msgData.id,
               type: 'order',
               text: `New Order: ${parsedData.order_id || 'Unknown'} - $${parsedData.amount} (${shopName})`,
             });
           } else if (parsedData.kind === 'Funds') {
             notificationEvents.push({
+              emailId: msgData.id,
               type: 'funds',
               text: `Funds Received: $${parsedData.amount} ${parsedData.currency || ''} (${shopName})`,
             });
           } else if (parsedData.kind === 'message') {
             notificationEvents.push({
+              emailId: msgData.id,
               type: 'message',
               text: `${parsedData.case_msg || 'Buyer sent you a message'}${parsedData.order_id ? ` (Order #${parsedData.order_id})` : ''} (${shopName})`,
             });
@@ -298,43 +269,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       existingRecords.forEach((r) => { if (r.emailId) existingEmailIds.add(r.emailId); });
 
-      // Sequential (not Promise.all) so each upsert's SELECT-then-INSERT can't
-      // race a sibling inserting the same key.
+      // Gmail messages are immutable. Existing email IDs must never rewrite
+      // user-managed order fields such as Design classification and notes.
       for (const r of dedupedRecords) {
-        const wasExisting = existingEmailIds.has(r.emailId);
-        const saved = await prisma.record.upsert({
-          where: { teamId_emailId: { teamId, emailId: r.emailId } },
-          update: {
-            dtLocal: r.dtLocal,
-            amount: r.amount,
-            orderId: r.orderId,
-            currency: r.currency,
-            source: r.source,
-            accountEmail: r.accountEmail,
-            accountId: account.id,
-            kind: r.kind,
-            caseMsg: r.caseMsg,
-            helpKind: r.helpKind,
-            costTotal: r.costTotal,
-            designCost: r.designCost,
-            refundAmount: r.refundAmount,
-            ffCode: r.ffCode,
-            productName: r.productName,
-            details: r.details,
-          },
-          create: {
+        if (existingEmailIds.has(r.emailId)) continue;
+
+        const cancellationTransactionId = getCancellationTransactionId(r);
+        if (r.source === 'Etsy_Cancelled' && cancellationTransactionId) {
+          const matchedOrderId = await findOrderIdByTransactionId(
             teamId,
-            accountId: account.id,
-            ...r,
-            // New orders enter the fulfillment pipeline; existing records keep
-            // their status because `update` doesn't touch orderStatus.
-            orderStatus: r.kind === 'ORDER' ? 'NEW' : null,
-          },
-        });
-        savedRecords.push(saved);
-        if (!wasExisting) existingEmailIds.delete(r.emailId);
+            cancellationTransactionId,
+            account.id,
+            userEmail
+          );
+          if (matchedOrderId) {
+            r.orderId = matchedOrderId;
+            r.details = {
+              ...(r.details || {}),
+              cancellation: {
+                ...(r.details?.cancellation || {}),
+                transactionId: cancellationTransactionId,
+                matchedOrderId,
+              },
+            };
+            await prisma.record.updateMany({
+              where: {
+                teamId,
+                kind: 'ORDER',
+                source: 'Etsy_Sales',
+                orderId: matchedOrderId,
+                deletedAt: null,
+              },
+              data: { orderStatus: 'CANCELLED' },
+            });
+          }
+        }
+
+        try {
+          const saved = await prisma.record.create({
+            data: {
+              teamId,
+              accountId: account.id,
+              ...r,
+              orderStatus: r.kind === 'ORDER' ? 'NEW' : null,
+            },
+          });
+          savedRecords.push(saved);
+        } catch (error: any) {
+          if (error?.code !== 'P2002') throw error;
+        }
       }
-      console.log(`[gmail-webhook] Persisted ${dedupedRecords.length} records for ${userEmail}`);
+      console.log(`[gmail-webhook] Persisted ${savedRecords.length} new records for ${userEmail}`);
     }
 
     const refundOrderIds = new Set(
@@ -345,7 +330,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (const orderId of refundOrderIds) {
       await syncEmailRefundTotal({ teamId, orderId, accountId: account.id, accountEmail: userEmail });
     }
-    const newlyCreatedRecords = savedRecords.filter((r) => r.emailId && !existingEmailIds.has(r.emailId));
+    const newlyCreatedRecords = savedRecords;
+    const newlyCreatedEmailIds = new Set(newlyCreatedRecords.map((record) => record.emailId).filter(Boolean));
+    const freshNotificationEvents = notificationEvents.filter((event) => newlyCreatedEmailIds.has(event.emailId));
 
     // Real-time outbound sync: push freshly-saved Etsy orders to feline
     // (fire-and-forget; failures stay PENDING/FAILED for the cron to retry).
@@ -359,14 +346,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // 6. Notifications (FCM disabled — persist to DB so the bell shows them)
-    if (notificationEvents.length > 0) {
+    if (freshNotificationEvents.length > 0) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
-      const orders = notificationEvents.filter((e) => e.type === 'order');
-      const funds = notificationEvents.filter((e) => e.type === 'funds');
-      const messages = notificationEvents.filter((e) => e.type === 'message');
+      const orders = freshNotificationEvents.filter((e) => e.type === 'order');
+      const funds = freshNotificationEvents.filter((e) => e.type === 'funds');
+      const messages = freshNotificationEvents.filter((e) => e.type === 'message');
 
-      if (notificationEvents.length === 1) {
-        const evt = notificationEvents[0];
+      if (freshNotificationEvents.length === 1) {
+        const evt = freshNotificationEvents[0];
         await prisma.notification.create({
           data: {
             teamId,
