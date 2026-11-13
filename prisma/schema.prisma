@@ -65,12 +65,14 @@ model User {
   sellerCodes     Json?
   sellerTeamId    String?
   createdAt       DateTime @default(now())
+  deletedAt       DateTime?
 
   team           Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
   sellerTeam     SellerTeam?   @relation(fields: [sellerTeamId], references: [id], onDelete: SetNull)
   linkedAccounts MailAccount[]
 
   @@index([teamId])
+  @@index([teamId, deletedAt])
   @@index([sellerTeamId])
 }
 

@@ -15,10 +15,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       teamId: true,
       permissions: true,
       allowedAccounts: true,
+      deletedAt: true,
     },
   });
 
-  if (!user) {
+  if (!user || user.deletedAt) {
     return res.status(404).json({ message: 'User not found' });
   }
 

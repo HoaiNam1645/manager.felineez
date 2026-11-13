@@ -10,8 +10,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const auth = requireAuth(req, res);
       if (!auth) return;
 
+      const deletedFilter = Array.isArray(req.query.deleted) ? req.query.deleted[0] : req.query.deleted;
+
       const users = await prisma.user.findMany({
-        where: { teamId: auth.teamId },
+        where: {
+          teamId: auth.teamId,
+          deletedAt: deletedFilter === 'only' ? { not: null } : null,
+        },
         select: {
           id: true,
           email: true,
@@ -21,6 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           sellerCodes: true,
           sellerTeamId: true,
           createdAt: true,
+          deletedAt: true,
         },
         orderBy: { createdAt: 'asc' },
       });
@@ -47,7 +53,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const normalized = String(email).toLowerCase().trim();
       const existing = await prisma.user.findUnique({ where: { email: normalized } });
-      if (existing) return res.status(409).json({ message: 'Email already registered' });
+      if (existing) {
+        return res.status(409).json({
+          message: existing.deletedAt
+            ? 'This account was deleted. Restore it instead of creating a new account.'
+            : 'Email already registered',
+        });
+      }
 
       // Seller identifier codes (unique across the workspace).
       let codes: string[] = [];

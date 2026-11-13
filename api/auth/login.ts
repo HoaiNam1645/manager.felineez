@@ -16,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     where: { email: String(email).toLowerCase().trim() },
   });
 
-  if (!user) {
+  if (!user || user.deletedAt) {
     return res.status(401).json({ message: 'Invalid credentials' });
   }
 

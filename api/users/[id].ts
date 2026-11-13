@@ -29,8 +29,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      const { password, role, permissions, allowedAccounts, sellerCodes, sellerTeamId } = req.body || {};
+      const { password, role, permissions, allowedAccounts, sellerCodes, sellerTeamId, restore } = req.body || {};
       const data: any = {};
+      if (restore === true) data.deletedAt = null;
       if (typeof role === 'string') {
         if (!isLeader && (role === 'OWNER' || role === 'LEADER' || role === 'USER' || role === 'FULFILLMENT' || role === 'DESIGN')) data.role = role;
         if (isLeader && (role === 'LEADER' || role === 'USER' || role === 'FULFILLMENT' || role === 'DESIGN')) data.role = role;
@@ -63,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const updated = await prisma.user.update({
         where: { id },
         data,
-        select: { id: true, email: true, role: true, permissions: true, allowedAccounts: true, sellerCodes: true, sellerTeamId: true },
+        select: { id: true, email: true, role: true, permissions: true, allowedAccounts: true, sellerCodes: true, sellerTeamId: true, deletedAt: true },
       });
       return res.status(200).json({ user: updated });
     }
@@ -87,7 +88,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      await prisma.user.delete({ where: { id } });
+      await prisma.user.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       return res.status(204).end();
     }
 

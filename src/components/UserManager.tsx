@@ -41,6 +41,7 @@ interface UserRow {
   allowedAccounts: string[];
   sellerCodes: string[];
   sellerTeamId: string | null;
+  deletedAt: string | null;
 }
 
 interface SellerTeamInfo {
@@ -506,6 +507,8 @@ const UserManager: React.FC = () => {
   const { accounts: allMailAccounts, role: myRole, user: authUser } = useDashboard();
   const isLeader = myRole === 'leader';
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [deletedUsers, setDeletedUsers] = useState<UserRow[]>([]);
+  const [showDeleted, setShowDeleted] = useState(false);
   const [sellerTeams, setSellerTeams] = useState<SellerTeamInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -516,15 +519,17 @@ const UserManager: React.FC = () => {
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<UserRow | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [restoringUserId, setRestoringUserId] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     setError(null);
     try {
-      const [{ users: list }, { teams }] = await Promise.all([
+      const [{ users: list }, { users: deletedList }, { teams }] = await Promise.all([
         api.get<{ users: any[] }>('/api/users'),
+        api.get<{ users: any[] }>('/api/users?deleted=only'),
         api.get<{ teams: SellerTeamInfo[] }>('/api/seller-teams'),
       ]);
-      setUsers(list.map((u): UserRow => {
+      const mapUser = (u: any): UserRow => {
         const role: RoleLower = u.role === 'OWNER' ? 'owner' : u.role === 'LEADER' ? 'leader' : u.role === 'FULFILLMENT' ? 'fulfillment' : u.role === 'DESIGN' ? 'design' : 'user';
         return {
           id: u.id,
@@ -534,8 +539,11 @@ const UserManager: React.FC = () => {
           allowedAccounts: u.allowedAccounts || [],
           sellerCodes: Array.isArray(u.sellerCodes) ? u.sellerCodes : [],
           sellerTeamId: u.sellerTeamId ?? null,
+          deletedAt: u.deletedAt ?? null,
         };
-      }));
+      };
+      setUsers(list.map(mapUser));
+      setDeletedUsers(deletedList.map(mapUser));
       setSellerTeams(teams);
     } catch (err: any) {
       console.error(err);
@@ -562,9 +570,10 @@ const UserManager: React.FC = () => {
     const q = search.trim().toLowerCase();
     const roleOrder: { [r in RoleLower]: number } = { owner: 0, leader: 1, fulfillment: 2, design: 3, user: 4 };
     // Leaders see and manage every non-owner account inside their own seller team.
+    const source = showDeleted ? deletedUsers : users;
     const scoped = isLeader
-      ? users.filter(u => u.role !== 'owner' && myTeamId != null && u.sellerTeamId === myTeamId)
-      : users;
+      ? source.filter(u => u.role !== 'owner' && myTeamId != null && u.sellerTeamId === myTeamId)
+      : source;
     const list = q
       ? scoped.filter(u =>
           u.email.toLowerCase().includes(q) ||
@@ -573,7 +582,7 @@ const UserManager: React.FC = () => {
         )
       : scoped;
     return [...list].sort((a, b) => roleOrder[a.role] - roleOrder[b.role] || a.email.localeCompare(b.email));
-  }, [users, search, teamNameOf, isLeader, myTeamId]);
+  }, [users, deletedUsers, showDeleted, search, teamNameOf, isLeader, myTeamId]);
 
   const handleDeleteUser = async (userId: string) => {
     setDeletingUserId(userId);
@@ -589,6 +598,19 @@ const UserManager: React.FC = () => {
     }
   };
 
+  const handleRestoreUser = async (userId: string) => {
+    setRestoringUserId(userId);
+    try {
+      await api.patch(`/api/users/${userId}`, { restore: true });
+      await fetchAll();
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error restoring user: ${err.message}`);
+    } finally {
+      setRestoringUserId(null);
+    }
+  };
+
   if (loading) return <div className="text-center p-8 text-gray-500 dark:text-gray-400">Loading users...</div>;
   if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
 
@@ -596,7 +618,16 @@ const UserManager: React.FC = () => {
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-grow max-w-sm">
+        <div className="flex flex-col sm:flex-row gap-2 flex-grow">
+          <div className="flex border border-gray-300 dark:border-gray-600 self-start">
+            <button onClick={() => setShowDeleted(false)} className={`px-3 py-2 text-sm ${!showDeleted ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800'}`}>
+              Active ({users.length})
+            </button>
+            <button onClick={() => setShowDeleted(true)} className={`px-3 py-2 text-sm border-l border-gray-300 dark:border-gray-600 ${showDeleted ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800'}`}>
+              Deleted ({deletedUsers.length})
+            </button>
+          </div>
+          <div className="relative flex-grow max-w-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg className="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
@@ -609,8 +640,9 @@ const UserManager: React.FC = () => {
             onChange={e => setSearch(e.target.value)}
             className={`${inputCls} pl-9`}
           />
+          </div>
         </div>
-        <button
+        {!showDeleted && <button
           onClick={() => setIsCreateOpen(true)}
           disabled={isLeader && !myTeamId}
           title={isLeader && !myTeamId ? 'You have no seller team assigned' : undefined}
@@ -620,7 +652,7 @@ const UserManager: React.FC = () => {
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
           </svg>
           Create User
-        </button>
+        </button>}
       </div>
 
       {/* Table */}
@@ -674,7 +706,7 @@ const UserManager: React.FC = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
-                      <button
+                      {!showDeleted && <button
                         onClick={() => setEditUser(user)}
                         className="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
                         title="Edit user"
@@ -682,8 +714,8 @@ const UserManager: React.FC = () => {
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
-                      </button>
-                      <button
+                      </button>}
+                      {!showDeleted ? <button
                         onClick={() => setConfirmDeleteUser(user)}
                         className="p-1.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
                         title="Delete user"
@@ -691,7 +723,14 @@ const UserManager: React.FC = () => {
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
-                      </button>
+                      </button> : <button
+                        onClick={() => handleRestoreUser(user.id)}
+                        disabled={restoringUserId === user.id}
+                        className="px-3 py-1.5 text-sm font-semibold text-blue-700 border border-blue-300 bg-blue-50 hover:bg-blue-100 disabled:opacity-50"
+                        title="Restore user"
+                      >
+                        {restoringUserId === user.id ? 'Restoring...' : 'Restore'}
+                      </button>}
                     </div>
                   </td>
                 </tr>
@@ -699,7 +738,7 @@ const UserManager: React.FC = () => {
               {filteredUsers.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
-                    {search ? 'No users match your search.' : 'No users yet.'}
+                    {search ? 'No users match your search.' : showDeleted ? 'No deleted users.' : 'No users yet.'}
                   </td>
                 </tr>
               )}
@@ -707,7 +746,7 @@ const UserManager: React.FC = () => {
           </table>
         </div>
         <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-          {filteredUsers.length} of {users.length} user{users.length !== 1 ? 's' : ''}
+          {filteredUsers.length} of {(showDeleted ? deletedUsers : users).length} user{(showDeleted ? deletedUsers : users).length !== 1 ? 's' : ''}
         </div>
       </div>
 
@@ -754,7 +793,7 @@ const UserManager: React.FC = () => {
               </svg>
             </div>
 
-            <h3 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-2">Delete User?</h3>
+            <h3 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-2">Deactivate User?</h3>
 
             <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-4">
               <p className="font-semibold text-center text-gray-900 dark:text-white">{confirmDeleteUser.email}</p>
@@ -763,7 +802,7 @@ const UserManager: React.FC = () => {
 
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-6">
               <p className="text-sm text-red-800 dark:text-red-200 font-medium">
-                ⚠️ The user will no longer be able to log in. This cannot be undone!
+                The user will no longer be able to log in. All data and permissions are kept and the account can be restored later.
               </p>
             </div>
 
@@ -783,10 +822,10 @@ const UserManager: React.FC = () => {
                 {deletingUserId === confirmDeleteUser.id ? (
                   <>
                     <Spinner size="sm" color="text-white" />
-                    Deleting...
+                    Deactivating...
                   </>
                 ) : (
-                  'Yes, Delete'
+                  'Deactivate'
                 )}
               </button>
             </div>
