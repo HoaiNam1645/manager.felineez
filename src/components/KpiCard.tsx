@@ -83,7 +83,7 @@ const renderComparison = (kpiValue: KpiValue) => {
   const changeText = isFinite(kpiValue.change) ? `${kpiValue.change.toFixed(1)}%` : 'New';
 
   return (
-    <div className={`mt-1 text-sm ${color} flex items-center`}>
+    <div className={`text-sm ${color} flex items-center`}>
       <span>{arrow}</span>
       <span className="ml-1 font-semibold">{changeText}</span>
     </div>
@@ -93,28 +93,29 @@ const renderComparison = (kpiValue: KpiValue) => {
 
 const KpiCard: React.FC<KpiCardProps> = ({ title, value }) => {
   const icon = getIcon(title);
+  const isSimpleValue = 'value' in value && typeof value.value === 'string';
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 flex items-start gap-4 card-hover transition-shadow duration-200">
-      <div className="flex-shrink-0">
+    <div className="grid min-h-[142px] grid-cols-[auto_minmax(0,1fr)] items-start gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-lg transition-shadow duration-200 card-hover dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex-shrink-0 self-start">
         {icon}
       </div>
-      <div className="flex-grow min-w-0">
+      <div className="flex min-h-[108px] min-w-0 flex-col">
         <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">{title}</h3>
-        {'value' in value && typeof value.value === 'string' ? (
-          <div>
-            <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white truncate" title={value.value}>{value.value}</p>
-            {renderComparison(value as KpiValue)}
+        {isSimpleValue ? (
+          <div className="mt-2 flex flex-1 flex-col justify-between">
+            <p className="min-w-0 break-words text-2xl font-bold leading-tight tabular-nums text-gray-900 dark:text-white" title={(value as KpiValue).value}>{(value as KpiValue).value}</p>
+            <div className="mt-2 min-h-5">{renderComparison(value as KpiValue)}</div>
           </div>
         ) : (
-          <div className="mt-2 space-y-3">
+          <div className="mt-2 flex flex-1 flex-col justify-center gap-2">
             {Object.entries(value as { [currency: string]: KpiValue }).map(([currency, kpiVal]) => (
-              <div key={currency} className="border-b border-gray-100 dark:border-gray-700 last:border-0 pb-1 last:pb-0">
-                <div className="flex justify-between items-baseline">
+              <div key={currency} className="border-b border-gray-100 pb-2 last:border-0 last:pb-0 dark:border-gray-700">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-2">
                   <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{currency}</span>
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">{kpiVal.value}</span>
+                  <span className="min-w-0 break-words text-right text-xl font-bold leading-tight tabular-nums text-gray-900 dark:text-white" title={kpiVal.value}>{kpiVal.value}</span>
                 </div>
-                {renderComparison(kpiVal)}
+                <div className="mt-2 min-h-5">{renderComparison(kpiVal)}</div>
               </div>
             ))}
           </div>

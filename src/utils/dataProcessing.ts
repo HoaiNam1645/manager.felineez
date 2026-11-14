@@ -1052,5 +1052,15 @@ const calculateSummary = (
         .filter(s => s.orders > 0 || s.items > 0 || s.revenue.value > 0)
         .sort((a, b) => b.revenue.value - a.revenue.value);
 
+    if (canFulfill) {
+        const sellerProfit = sellerRanking.reduce((sum, seller) => sum + (seller.profit || 0), 0);
+        const manualCost = Object.values(manualCostData.cost).reduce((sum, cost) => sum + cost, 0);
+        kpis['Profit'] = {
+            USD: { value: formatCurrency(roundMoney(sellerProfit - manualCost)) },
+        };
+    } else {
+        kpis['Profit'] = { value: '---' };
+    }
+
     return { kpis, table: { headers: tableHeaders, rows: tableRows }, chartData: summaryChartData, topProductsByShop, sellerRanking };
 }

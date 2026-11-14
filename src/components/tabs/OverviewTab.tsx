@@ -27,7 +27,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ processedData, isSingleDay, h
     // Memoize KPI values to prevent recalculation
     const kpiValues = React.useMemo(() => ({
         orders: processedData.summary.kpis['Total Orders'] || { value: '---' },
-        shops: processedData.summary.kpis['Shops'] || { value: '---' },
+        profit: canViewCost ? (processedData.summary.kpis['Profit'] || { value: '---' }) : hiddenValue,
         revenue: processedData.summary.kpis['Revenue'] || { value: '---' },
         funds: canViewFunds ? (processedData.summary.kpis['Funds'] || { value: '---' }) : hiddenValue,
         cost: canViewCost ? (processedData.summary.kpis['Cost'] || { value: '---' }) : hiddenValue
@@ -38,7 +38,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ processedData, isSingleDay, h
             {/* 1. KPIs Section (Merged from Summary) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 mb-6">
                 <KpiCard title="Total Orders" value={kpiValues.orders} />
-                <KpiCard title="Shops" value={kpiValues.shops} />
+                <KpiCard title="Profit" value={kpiValues.profit} />
                 <KpiCard title="Revenue" value={kpiValues.revenue} />
                 <KpiCard title="Funds" value={kpiValues.funds} />
                 <KpiCard title="Cost" value={kpiValues.cost} />
