@@ -73,28 +73,9 @@ const getIcon = (title: string) => {
   );
 }
 
-const renderComparison = (kpiValue: KpiValue) => {
-  if (typeof kpiValue.change !== 'number' || !kpiValue.direction || kpiValue.direction === 'neutral') {
-    return null;
-  }
-
-  const color = kpiValue.direction === 'up' ? 'text-green-500' : 'text-red-500';
-  const arrow = kpiValue.direction === 'up' ? '▲' : '▼';
-  const changeText = isFinite(kpiValue.change) ? `${kpiValue.change.toFixed(1)}%` : 'New';
-
-  return (
-    <div className={`text-sm ${color} flex items-center`}>
-      <span>{arrow}</span>
-      <span className="ml-1 font-semibold">{changeText}</span>
-    </div>
-  );
-};
-
-
 const KpiCard: React.FC<KpiCardProps> = ({ title, value }) => {
   const icon = getIcon(title);
   const isSimpleValue = 'value' in value && typeof value.value === 'string';
-  const simpleComparison = isSimpleValue ? renderComparison(value as KpiValue) : null;
 
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-md transition-shadow duration-200 card-hover dark:border-gray-700 dark:bg-gray-800">
@@ -106,22 +87,14 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value }) => {
         {isSimpleValue ? (
           <div className="mt-2">
             <p className="min-w-0 break-words text-2xl font-bold leading-tight tabular-nums text-gray-900 dark:text-white" title={(value as KpiValue).value}>{(value as KpiValue).value}</p>
-            {simpleComparison && <div className="mt-2">{simpleComparison}</div>}
           </div>
         ) : (
           <div className="mt-2 space-y-2">
-            {Object.entries(value as { [currency: string]: KpiValue }).map(([currency, kpiVal]) => {
-              const comparison = renderComparison(kpiVal);
-              return (
+            {Object.entries(value as { [currency: string]: KpiValue }).map(([currency, kpiVal]) => (
                 <div key={currency} className="border-b border-gray-100 pb-2 last:border-0 last:pb-0 dark:border-gray-700">
-                  <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-2">
-                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{currency}</span>
-                    <span className="min-w-0 break-words text-right text-xl font-bold leading-tight tabular-nums text-gray-900 dark:text-white" title={kpiVal.value}>{kpiVal.value}</span>
-                  </div>
-                  {comparison && <div className="mt-2">{comparison}</div>}
+                  <span className="block min-w-0 break-words text-[clamp(1.1rem,1.35vw,1.5rem)] font-bold leading-tight tabular-nums text-gray-900 dark:text-white" title={kpiVal.value}>{kpiVal.value}</span>
                 </div>
-              );
-            })}
+            ))}
           </div>
         )}
       </div>

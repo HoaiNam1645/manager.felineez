@@ -59,10 +59,14 @@ const getOrderNetForProfit = (record: Record): number => {
     return roundMoney(effectiveOrderAmount(record));
 };
 
-const formatCurrency = (value: number): string => {
-    // Per user request to simplify KPI card display, always use a '$' symbol
-    // as the currency code (e.g., AUD) is displayed separately.
-    return '$' + new Intl.NumberFormat('en-US', {
+const formatCurrency = (value: number, currency = 'USD'): string => {
+    if (currency === 'VND') {
+        return `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value)} ₫`;
+    }
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        currencyDisplay: currency === 'USD' ? 'narrowSymbol' : 'symbol',
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(value);
@@ -791,11 +795,8 @@ const calculateSummary = (
         const financialKpis: { [currency: string]: KpiValue } = {};
         Array.from(allCurrencies).sort().forEach(c => {
             const current = currentData[c] || 0;
-            const previous = previousData?.[c] || 0;
-            const comparison = previousRawKpis ? calculatePercentageChange(current, previous) : {};
             financialKpis[c] = {
-                value: formatCurrency(current),
-                ...comparison,
+                value: formatCurrency(current, c),
             };
         });
         return financialKpis;
@@ -1056,7 +1057,7 @@ const calculateSummary = (
         const sellerProfit = sellerRanking.reduce((sum, seller) => sum + (seller.profit || 0), 0);
         const manualCost = Object.values(manualCostData.cost).reduce((sum, cost) => sum + cost, 0);
         kpis['Profit'] = {
-            USD: { value: formatCurrency(roundMoney(sellerProfit - manualCost)) },
+            USD: { value: formatCurrency(roundMoney(sellerProfit - manualCost), 'USD') },
         };
     } else {
         kpis['Profit'] = { value: '---' };
