@@ -32,8 +32,15 @@ import { Record as OrderRecord } from '../types';
 import { useNotification } from '../contexts/NotificationContext';
 import { DESIGN_SOURCE_PREFIX, DESIGN_TYPE_LABELS, designTypeForItem, hasDesignRequestForItem, makeDesignItemKey, preferredDesignProduct, productMatchesDesignItem } from '../utils/designItems';
 
-const PAGE_SIZE = 20;
+const FOLDER_ROWS_PER_PAGE = 7;
 const UPLOAD_CHUNK = 4; // images per upload request (keeps payload under server limit)
+
+const folderColumnsForViewport = () => {
+  if (typeof window === 'undefined') return 5;
+  if (window.innerWidth >= 1024) return 5;
+  if (window.innerWidth >= 640) return 3;
+  return 2;
+};
 /* ---------- Icons ---------- */
 type IconProps = { className?: string };
 const FolderIcon = ({ className = 'h-6 w-6' }: IconProps) => (
@@ -441,17 +448,24 @@ const FoldersView: React.FC<{ categoryId: string; navigate: (to: string) => void
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [pageSize, setPageSize] = useState(() => folderColumnsForViewport() * FOLDER_ROWS_PER_PAGE);
 
   const apiCategoryId = categoryId === 'uncategorized' ? 'none' : categoryId;
+
+  useEffect(() => {
+    const updatePageSize = () => setPageSize(folderColumnsForViewport() * FOLDER_ROWS_PER_PAGE);
+    window.addEventListener('resize', updatePageSize);
+    return () => window.removeEventListener('resize', updatePageSize);
+  }, []);
 
   const load = useCallback(async (toPage = 1) => {
     setLoading(true);
     try {
-      const res = await listProducts({ categoryId: apiCategoryId, page: toPage, pageSize: PAGE_SIZE });
+      const res = await listProducts({ categoryId: apiCategoryId, page: toPage, pageSize });
       setProducts(res.products); setTotal(res.total); setTotalPages(res.totalPages || 1); setPage(res.page);
     } catch (e: any) { setError(e?.message || 'Failed to load'); }
     finally { setLoading(false); }
-  }, [apiCategoryId]);
+  }, [apiCategoryId, pageSize]);
 
   useEffect(() => {
     load(1);
