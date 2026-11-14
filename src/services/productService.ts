@@ -64,6 +64,7 @@ export interface ProductPage {
 export async function listProducts(params?: {
   status?: string;
   q?: string;
+  title?: string;
   categoryId?: string;
   page?: number;
   pageSize?: number;
@@ -71,6 +72,7 @@ export async function listProducts(params?: {
   const qs = new URLSearchParams();
   if (params?.status) qs.set('status', params.status);
   if (params?.q) qs.set('q', params.q);
+  if (params?.title) qs.set('title', params.title);
   if (params?.categoryId) qs.set('categoryId', params.categoryId);
   if (params?.page) qs.set('page', String(params.page));
   if (params?.pageSize) qs.set('pageSize', String(params.pageSize));

@@ -449,6 +449,8 @@ const FoldersView: React.FC<{ categoryId: string; navigate: (to: string) => void
   const [error, setError] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [pageSize, setPageSize] = useState(() => folderColumnsForViewport() * FOLDER_ROWS_PER_PAGE);
+  const [folderSearch, setFolderSearch] = useState('');
+  const [debouncedFolderSearch, setDebouncedFolderSearch] = useState('');
 
   const apiCategoryId = categoryId === 'uncategorized' ? 'none' : categoryId;
 
@@ -458,14 +460,19 @@ const FoldersView: React.FC<{ categoryId: string; navigate: (to: string) => void
     return () => window.removeEventListener('resize', updatePageSize);
   }, []);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedFolderSearch(folderSearch.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [folderSearch]);
+
   const load = useCallback(async (toPage = 1) => {
     setLoading(true);
     try {
-      const res = await listProducts({ categoryId: apiCategoryId, page: toPage, pageSize });
+      const res = await listProducts({ categoryId: apiCategoryId, title: debouncedFolderSearch || undefined, page: toPage, pageSize });
       setProducts(res.products); setTotal(res.total); setTotalPages(res.totalPages || 1); setPage(res.page);
     } catch (e: any) { setError(e?.message || 'Failed to load'); }
     finally { setLoading(false); }
-  }, [apiCategoryId, pageSize]);
+  }, [apiCategoryId, debouncedFolderSearch, pageSize]);
 
   useEffect(() => {
     load(1);
@@ -516,9 +523,26 @@ const FoldersView: React.FC<{ categoryId: string; navigate: (to: string) => void
         </div>
 
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3">Folders {total > 0 && `(${total})`}</h2>
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Folders {total > 0 && `(${total})`}</h2>
+            <div className="relative w-full sm:w-80">
+              <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+              <input
+                value={folderSearch}
+                onChange={(event) => setFolderSearch(event.target.value)}
+                placeholder="Tìm folder theo tên..."
+                className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-9 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+              {folderSearch && (
+                <button type="button" onClick={() => setFolderSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" title="Xóa tìm kiếm">×</button>
+              )}
+            </div>
+          </div>
           {loading ? <p className="text-gray-500">Loading…</p>
-            : products.length === 0 ? <p className="text-gray-500">No folders yet. Create one above.</p>
+            : products.length === 0 ? <p className="text-gray-500">{debouncedFolderSearch ? 'Không tìm thấy folder phù hợp.' : 'No folders yet. Create one above.'}</p>
             : (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

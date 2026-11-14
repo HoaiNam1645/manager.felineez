@@ -12,7 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === 'GET') {
-      const { status, q, categoryId, page = '1', pageSize = '20' } = req.query as Record<string, string>;
+      const { status, q, title, categoryId, page = '1', pageSize = '20' } = req.query as Record<string, string>;
       const creatorIds = await visibleCreatorIds(auth);
       const where: any = {
         teamId: auth.teamId,
@@ -20,6 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
       if (status && STATUS.has(status)) where.status = status;
       if (categoryId) where.categoryId = categoryId === 'none' ? null : categoryId;
+      if (title) where.title = { contains: title };
       if (q) {
         where.OR = [
           { title: { contains: q } },
