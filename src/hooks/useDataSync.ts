@@ -9,7 +9,6 @@ import {
     updateAccountsInFirebase,
     updateRecordsInFirebase,
     saveRecordsToFirebase,
-    listenForNewRecords,
     listenForAccounts,
     getRecordsForDateRange,
     getAccountsFromFirebase,
@@ -69,6 +68,8 @@ export const useDataSync = ({
     // Refs for Debounced Realtime Sync
     const realtimeSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const realtimeListenerUnsubscribeRef = useRef<(() => void) | null>(null);
+    // Set when records changed from a background poll so the UI can skip the blocking overlay
+    const silentRecordsUpdateRef = useRef(false);
     const isRealtimeSyncEnabledRef = useRef<boolean>(false);
 
     // Queue for sync operations
@@ -739,38 +740,6 @@ export const useDataSync = ({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [resyncCostsManual]);
 
-    // --- Effect: Listen for Record Changes (Realtime) ---
-    useEffect(() => {
-        if (!user) return;
-
-        const unsubscribe = listenForNewRecords(teamId, (changedRecord) => {
-            const { from, to } = filterDateRange;
-            const recordDate = new Date(changedRecord.dt_local);
-            const fromDate = new Date(from);
-            const toDate = new Date(to); toDate.setHours(23, 59, 59, 999);
-            const isInRange = recordDate >= fromDate && recordDate <= toDate;
-
-            setRecords(prevRecords => {
-                const withoutChanged = changedRecord.id
-                    ? prevRecords.filter(record => record.id !== changedRecord.id)
-                    : prevRecords;
-
-                if (changedRecord.deleted_at || !isInRange) return withoutChanged;
-
-                return [changedRecord, ...withoutChanged].sort(
-                    (a, b) => new Date(b.dt_local).getTime() - new Date(a.dt_local).getTime()
-                );
-            });
-        });
-
-        // Store unsubscribe function
-        realtimeListenerUnsubscribeRef.current = unsubscribe;
-
-        return () => {
-            unsubscribe();
-        };
-    }, [filterDateRange, user, teamId]);
-
     // --- Effect: Listen for Account Changes (Realtime) ---
     useEffect(() => {
         if (!user) return;
@@ -820,6 +789,7 @@ export const useDataSync = ({
     return {
         allAccounts, setAllAccounts,
         records, setRecords,
+        silentRecordsUpdateRef,
         previousPeriodRecords, setPreviousPeriodRecords,
         manualCosts, setManualCosts,
         isLoading,

@@ -116,6 +116,7 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
   const {
     allAccounts, setAllAccounts,
     records, setRecords,
+    silentRecordsUpdateRef,
     previousPeriodRecords,
     manualCosts, setManualCosts,
     isLoading,
@@ -138,6 +139,9 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
 
   const realtimeRecordsRef = useRef(records);
   const notifiedRealtimeIdsRef = useRef(new Set<string>());
+  // Read latest range/timezone inside the listener without restarting its polling loop
+  const realtimeRangeRef = useRef({ from: filterDateRange.from, to: filterDateRange.to, timeZone });
+  realtimeRangeRef.current = { from: filterDateRange.from, to: filterDateRange.to, timeZone };
   useEffect(() => {
     realtimeRecordsRef.current = records;
   }, [records]);
@@ -192,39 +196,55 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
 
     import('../services/firebaseService').then(({ listenForNewRecords }) => {
       if (cancelled) return;
-      unsubscribe = listenForNewRecords(teamId, (changedRecord, change) => {
-        if (!changedRecord.id) return;
+      unsubscribe = listenForNewRecords(teamId, (changes) => {
+        const { from, to } = realtimeRangeRef.current;
+        const tz = realtimeRangeRef.current.timeZone;
+        const known = new Map(realtimeRecordsRef.current.map(r => [r.id, r]));
+        const upserts = new Map<string, Record>();
+        const removals = new Set<string>();
 
-        if (changedRecord.deleted_at) {
-          setRecords(prev => prev.filter(record => record.id !== changedRecord.id));
-          return;
+        for (const { record, isNew } of changes) {
+          if (!record.id) continue;
+          const existing = known.get(record.id);
+
+          if (record.deleted_at) {
+            if (existing) removals.add(record.id);
+            continue;
+          }
+
+          if (existing) {
+            // Skip records whose content did not actually change
+            if (JSON.stringify(existing) !== JSON.stringify(record)) upserts.set(record.id, record);
+            continue;
+          }
+
+          const recordDate = dateKeyInTimeZone(record.dt_local, tz);
+          if (!recordDate || recordDate < from || recordDate > to) continue;
+          upserts.set(record.id, record);
+
+          if (isNew && record.kind === 'order' && !notifiedRealtimeIdsRef.current.has(record.id)) {
+            notifiedRealtimeIdsRef.current.add(record.id);
+            const productName = record.details?.items?.[0]?.name || 'Unknown product';
+            addNotification(`New order #${record.order_id}: ${productName}`, 'success');
+          }
         }
 
-        const existing = realtimeRecordsRef.current.some(record => record.id === changedRecord.id);
-        if (existing) {
-          setRecords(prev => prev.map(record => record.id === changedRecord.id ? changedRecord : record));
-          return;
-        }
+        // Nothing visible changed: do not touch state, so nothing re-processes
+        if (upserts.size === 0 && removals.size === 0) return;
 
-        const recordDate = dateKeyInTimeZone(changedRecord.dt_local, timeZone);
-        const isInCurrentRange = !!recordDate
-          && recordDate >= filterDateRange.from
-          && recordDate <= filterDateRange.to;
-        if (!isInCurrentRange) return;
-
+        silentRecordsUpdateRef.current = true;
         setRecords(prev => {
-          const index = prev.findIndex(record => record.id === changedRecord.id);
-          if (index < 0) return [...prev, changedRecord];
-          const next = [...prev];
-          next[index] = changedRecord;
+          const seen = new Set<string>();
+          const next: Record[] = [];
+          for (const r of prev) {
+            if (removals.has(r.id as string)) continue;
+            const updated = r.id ? upserts.get(r.id) : undefined;
+            next.push(updated ?? r);
+            if (updated) seen.add(r.id as string);
+          }
+          upserts.forEach((r, id) => { if (!seen.has(id)) next.push(r); });
           return next;
         });
-
-        if (change.isNew && changedRecord.kind === 'order' && !notifiedRealtimeIdsRef.current.has(changedRecord.id)) {
-          notifiedRealtimeIdsRef.current.add(changedRecord.id);
-          const productName = changedRecord.details?.items?.[0]?.name || 'Unknown product';
-          addNotification(`New order #${changedRecord.order_id}: ${productName}`, 'success');
-        }
       });
 
     });
@@ -234,7 +254,7 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
       console.log('[Real-time] Cleaning up listener...');
       unsubscribe?.();
     };
-  }, [teamId, addNotification, filterDateRange.from, filterDateRange.to, timeZone]);
+  }, [teamId, addNotification]);
 
   // --- 4. Logic Functions ---
 
@@ -394,6 +414,15 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
       return;
     }
 
+    // Background realtime poll that only changed records: recompute without the blocking overlay
+    const prev = lastTriggeredRef.current;
+    const isSilent = silentRecordsUpdateRef.current
+      && prev.accountsHash === processingAccountsHash
+      && prev.filter === filterDateRange
+      && prev.tz === timeZone
+      && prev.manual === manualCosts;
+    silentRecordsUpdateRef.current = false;
+
     lastTriggeredRef.current = {
       records: filteredRecords,
       prevRecords: previousPeriodRecords,
@@ -404,7 +433,7 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
     };
 
     // Set processing state
-    setIsProcessing(true);
+    if (!isSilent) setIsProcessing(true);
     // DON'T reset processedData - keep old data visible for optimistic UI
 
     // Safety timeout: If worker doesn't respond in 10s, force unlock UI

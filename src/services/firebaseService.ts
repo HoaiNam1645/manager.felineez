@@ -342,7 +342,7 @@ export const saveRecordsToFirebase = async (
 
 export const listenForNewRecords = (
   _teamId: string,
-  callback: (record: Record, change: { isNew: boolean }) => void
+  callback: (changes: { record: Record; isNew: boolean }[]) => void
 ): (() => void) => {
   let cancelled = false;
   const listenerStartedAt = Date.now();
@@ -354,12 +354,15 @@ export const listenForNewRecords = (
     try {
       const qs = new URLSearchParams({ updatedSince: lastSeenAt, limit: '5000' });
       const { records } = await api.get<{ records: any[] }>(`/api/records?${qs.toString()}`);
-      records.forEach((raw) => {
-        const createdAt = new Date(raw.createdAt || 0).getTime();
-        callback(mapRecord(raw), {
-          isNew: Number.isFinite(createdAt) && createdAt >= listenerStartedAt - 2000,
-        });
-      });
+      if (!cancelled && records.length > 0) {
+        callback(records.map((raw) => {
+          const createdAt = new Date(raw.createdAt || 0).getTime();
+          return {
+            record: mapRecord(raw),
+            isNew: Number.isFinite(createdAt) && createdAt >= listenerStartedAt - 2000,
+          };
+        }));
+      }
       // Keep a small overlap so updates committed during the request are never skipped.
       lastSeenAt = new Date(pollStartedAt - 2000).toISOString();
     } catch (e) {
