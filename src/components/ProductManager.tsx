@@ -12,6 +12,7 @@ import {
   fileToDataUri,
   fileToUpload,
   fetchAllProducts,
+  fetchDesignProducts,
   searchProducts,
   isImageFile,
   linkProductDesignItems,
@@ -773,7 +774,7 @@ const MockupsView: React.FC<{ categoryId: string; productId: string; designOrder
     if (linkRecords.length > 0) return;
     setLoadingLinkOrders(true);
     try {
-      const [records, products] = await Promise.all([getRecentOrderRecords(1000), fetchAllProducts(1000)]);
+      const [records, products] = await Promise.all([getRecentOrderRecords(1000), fetchDesignProducts()]);
       setLinkRecords(records);
       setLinkedProductByKey(new Map(products.flatMap((item) => item.designLinks.map((link) => [link.designItemKey, item.id] as const))));
     } catch (e: any) {

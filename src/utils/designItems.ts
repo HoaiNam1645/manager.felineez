@@ -17,11 +17,13 @@ export const productMatchesDesignItem = (product: { source?: string | null; desi
   return !!designItemKey && (product.source === designItemKey || product.designLinks?.some((link) => link.designItemKey === designItemKey) === true);
 };
 
-export const preferredDesignProduct = <T extends { source?: string | null; designLinks?: Array<{ designItemKey?: string | null }> | null; images?: unknown[] | null; updatedAt?: string; createdAt?: string }>(products: T[], designItemKey?: string | null): T | undefined => {
+export const designFileCountOf = (product: { images?: unknown[] | null; imageCount?: number }) => product.imageCount ?? product.images?.length ?? 0;
+
+export const preferredDesignProduct = <T extends { source?: string | null; designLinks?: Array<{ designItemKey?: string | null }> | null; images?: unknown[] | null; imageCount?: number; updatedAt?: string; createdAt?: string }>(products: T[], designItemKey?: string | null): T | undefined => {
   return products
     .filter((product) => productMatchesDesignItem(product, designItemKey))
     .sort((a, b) => {
-      const fileDifference = (b.images?.length || 0) - (a.images?.length || 0);
+      const fileDifference = designFileCountOf(b) - designFileCountOf(a);
       if (fileDifference !== 0) return fileDifference;
       const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
       const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();

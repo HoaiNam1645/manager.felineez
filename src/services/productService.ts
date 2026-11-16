@@ -45,6 +45,8 @@ export interface Product {
   currency: string | null;
   description: string | null;
   images: ProductImage[];
+  /** Set on lightweight design-index entries, where `images` is left empty */
+  imageCount?: number;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   source: string | null;
   createdAt: string;
@@ -150,6 +152,7 @@ function normalize(p: any): Product {
     currency: p.currency ?? null,
     description: p.description ?? null,
     images: Array.isArray(p.images) ? p.images : [],
+    imageCount: typeof p.imageCount === 'number' ? p.imageCount : undefined,
     status: p.status ?? 'DRAFT',
     source: p.source ?? null,
     createdAt: p.createdAt,
@@ -177,6 +180,16 @@ export async function fetchAllProducts(max = 500): Promise<Product[]> {
     if (page >= res.totalPages || res.products.length === 0) break;
   }
   return out;
+}
+
+/**
+ * Every design folder (any product linked to an order item) with its file count
+ * but without image payloads. Unlike fetchAllProducts this is not capped, so
+ * old orders keep showing their design status as the catalog grows.
+ */
+export async function fetchDesignProducts(): Promise<Product[]> {
+  const { products } = await api.get<{ products: any[] }>('/api/products?designIndex=1');
+  return products.map(normalize);
 }
 
 const normalizeText = (s?: string | null) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();

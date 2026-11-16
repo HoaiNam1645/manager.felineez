@@ -14,11 +14,11 @@ import ManualOrderModal from '../ManualOrderModal';
 import GoogleSheetModal from '../GoogleSheetModal';
 import OrderSelectorModal from '../OrderSelectorModal';
 import PreviewSyncModal from '../PreviewSyncModal';
-import { Product, fetchAllProducts } from '../../services/productService';
+import { Product, fetchDesignProducts } from '../../services/productService';
 import { api } from '../../services/apiClient';
 import { fetchListedIdeas } from '../../services/ideasService';
 import { useNotification } from '../../contexts/NotificationContext';
-import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, preferredDesignProduct } from '../../utils/designItems';
+import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, preferredDesignProduct, designFileCountOf } from '../../utils/designItems';
 import { captureProductsReturnState, restoreProductsReturnScroll } from '../../utils/productReturnState';
 
 const FACTORIES: { key: string; label: string }[] = [
@@ -167,7 +167,7 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
 
     useEffect(() => {
         let cancelled = false;
-        fetchAllProducts(1000)
+        fetchDesignProducts()
             .then(products => { if (!cancelled) setDesignProducts(products); })
             .catch(() => { if (!cancelled) setDesignProducts([]); });
         return () => { cancelled = true; };
@@ -337,8 +337,8 @@ const OrderListTab: React.FC<OrderListTabProps> = ({
             const nextItems = productCell.items.map((item: any) => {
                 const matchedDesign = preferredDesignProduct(designProducts, item.designItemKey);
                 const hasDesign = !!matchedDesign;
-                const hasDesignFiles = (matchedDesign?.images?.length || 0) > 0;
-                const designFileCount = matchedDesign?.images?.length || 0;
+                const hasDesignFiles = (matchedDesign ? designFileCountOf(matchedDesign) : 0) > 0;
+                const designFileCount = matchedDesign ? designFileCountOf(matchedDesign) : 0;
                 const designType = designTypeForItem(record?.details, item.designItemKey);
                 const createdAt = matchedDesign?.createdAt ? new Date(matchedDesign.createdAt).getTime() : NaN;
                 const designOverdueMs = hasDesign && !hasDesignFiles && Number.isFinite(createdAt)

@@ -5,11 +5,11 @@ import { Record as OrderRecord } from '../types';
 import { getHighResImageUrl } from '../utils/imageUtils';
 import { decodeHTMLEntities } from '../utils/htmlDecode';
 import { ORDER_STATUS_CLASSES, ORDER_STATUS_LABELS } from '../constants/orderStatus';
-import { Product, fetchAllProducts } from '../services/productService';
+import { Product, fetchDesignProducts } from '../services/productService';
 import { updateOrderFields } from '../services/firebaseService';
 import { useDashboard } from '../contexts/DashboardContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, hasDesignRequestForItem, makeDesignItemKey, preferredDesignProduct } from '../utils/designItems';
+import { DesignType, designRequestsOf, designTypeForItem, designTypesOf, hasDesignRequestForItem, makeDesignItemKey, preferredDesignProduct, designFileCountOf } from '../utils/designItems';
 import { captureProductsReturnState } from '../utils/productReturnState';
 
 type DesignView = 'missing' | 'overdue' | 'team' | 'outsource';
@@ -108,7 +108,7 @@ const DesignQueueTab: React.FC<{
 
   useEffect(() => {
     let cancelled = false;
-    fetchAllProducts(1000)
+    fetchDesignProducts()
       .then((items) => { if (!cancelled) setProducts(items); })
       .catch(() => { if (!cancelled) setProducts([]); });
     return () => { cancelled = true; };
@@ -121,7 +121,7 @@ const DesignQueueTab: React.FC<{
 
   const tasksWithFolders = useMemo(() => tasks.map((task) => {
     const match = preferredDesignProduct(products || [], task.designItemKey);
-    const hasDesignFiles = (match?.images?.length || 0) > 0;
+    const hasDesignFiles = (match ? designFileCountOf(match) : 0) > 0;
     const overdueAnchor = match?.createdAt || task.requestedAt || task.dtLocal;
     const anchorTime = new Date(overdueAnchor).getTime();
     const overdueMs = !hasDesignFiles && !TERMINAL_STATUSES.has(task.status) && Number.isFinite(anchorTime)

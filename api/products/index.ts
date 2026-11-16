@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { prisma } from '../_lib/prisma.js';
 import { requireAuth } from '../_lib/auth.js';
@@ -12,8 +13,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === 'GET') {
-      const { status, q, title, categoryId, page = '1', pageSize = '20' } = req.query as Record<string, string>;
+      const { status, q, title, categoryId, page = '1', pageSize = '20', designIndex } = req.query as Record<string, string>;
       const creatorIds = await visibleCreatorIds(auth);
+
+      // Lightweight index of every design folder (no image payloads), so order
+      // screens can show design status without paging through the whole catalog.
+      if (designIndex) {
+        const creatorFilter = creatorIds
+          ? (creatorIds.length ? Prisma.sql`AND p.createdById IN (${Prisma.join(creatorIds)})` : Prisma.sql`AND 1=0`)
+          : Prisma.empty;
+        const rows = await prisma.$queryRaw<Array<{
+          id: string; categoryId: string | null; title: string | null; listingTitle: string | null;
+          status: string; source: string | null; createdAt: Date; updatedAt: Date; imageCount: bigint | number | null;
+        }>>(Prisma.sql`
+          SELECT p.id, p.categoryId, p.title, p.listingTitle, p.status, p.source, p.createdAt, p.updatedAt,
+                 JSON_LENGTH(p.images) AS imageCount
+          FROM Product p
+          WHERE p.teamId = ${auth.teamId} ${creatorFilter}
+            AND (p.source LIKE 'design-item:%'
+                 OR EXISTS (SELECT 1 FROM ProductDesignLink l WHERE l.productId = p.id))
+        `);
+        const links = await prisma.productDesignLink.findMany({
+          where: { teamId: auth.teamId, productId: { in: rows.map((r) => r.id) } },
+          select: { id: true, productId: true, recordId: true, itemIndex: true, designItemKey: true, createdAt: true },
+        });
+        const linksByProduct = new Map<string, typeof links>();
+        for (const link of links) {
+          const list = linksByProduct.get(link.productId) ?? [];
+          list.push(link);
+          linksByProduct.set(link.productId, list);
+        }
+        return res.status(200).json({
+          products: rows.map((r) => ({
+            ...r,
+            imageCount: Number(r.imageCount ?? 0),
+            designLinks: linksByProduct.get(r.id) ?? [],
+          })),
+        });
+      }
       const where: any = {
         teamId: auth.teamId,
         ...(creatorIds ? { createdById: { in: creatorIds } } : {}),
