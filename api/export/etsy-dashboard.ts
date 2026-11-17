@@ -177,7 +177,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       (!hasSellerScope || requestedSellerIds.includes(user.id))
       && (!hasTeamScope || Boolean(user.sellerTeamId && requestedTeamIds.includes(user.sellerTeamId)));
 
-    const summary: JsonMap = { orders: 0, items: 0, grossBookedValue: 0, recognizedRevenue: 0, etsyNet: 0, fulfillmentCost: 0, designCost: 0, refundAmount: 0, manualCost: 0, manualCostVnd: 0, operationalProfit: 0, funds: round(funds.filter((row) => (row.currency || 'USD') === 'USD').reduce((sum, row) => sum + numberOf(row.amount), 0)), fundsVnd: round(funds.filter((row) => row.currency === 'VND').reduce((sum, row) => sum + numberOf(row.amount), 0)), shops: 0, activeSellers: 0 };
+    const fundsCanBeAttributed = !hasSellerScope && !hasTeamScope;
+    const summary: JsonMap = { orders: 0, items: 0, grossBookedValue: 0, recognizedRevenue: 0, etsyNet: 0, fulfillmentCost: 0, designCost: 0, refundAmount: 0, manualCost: 0, manualCostVnd: 0, operationalProfit: 0, funds: fundsCanBeAttributed ? round(funds.filter((row) => (row.currency || 'USD') === 'USD').reduce((sum, row) => sum + numberOf(row.amount), 0)) : 0, fundsVnd: fundsCanBeAttributed ? round(funds.filter((row) => row.currency === 'VND').reduce((sum, row) => sum + numberOf(row.amount), 0)) : 0, shops: 0, activeSellers: 0 };
     const statusMap = new Map<string, number>();
     const trendMap = new Map(enumerateDays(startDate, endDate).map((date) => [date, { date, orders: 0, items: 0, net: 0, profit: 0 }]));
     const sellerMap = new Map<string, JsonMap>();
@@ -276,8 +277,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    summary.manualCost = round(manualCosts.filter((row) => (row.currency || 'USD') === 'USD').reduce((sum, row) => sum + numberOf(row.cost), 0));
-    summary.manualCostVnd = round(manualCosts.filter((row) => row.currency === 'VND').reduce((sum, row) => sum + numberOf(row.cost), 0));
+    summary.manualCost = requestedShopIds.length || hasSellerScope || hasTeamScope ? 0 : round(manualCosts.filter((row) => (row.currency || 'USD') === 'USD').reduce((sum, row) => sum + numberOf(row.cost), 0));
+    summary.manualCostVnd = requestedShopIds.length || hasSellerScope || hasTeamScope ? 0 : round(manualCosts.filter((row) => row.currency === 'VND').reduce((sum, row) => sum + numberOf(row.cost), 0));
     summary.operationalProfit -= summary.manualCost;
     summary.shops = activeShopIds.size;
     summary.activeSellers = activeSellerIds.size;
